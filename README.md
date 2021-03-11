@@ -12,4 +12,4 @@ Firmware for talking weighing scale
 8. In VSCode, near the bottom, select &#10004; for building or :arrow_right: for uploading
 
 ## Schematic
-![Schematic](https://github.com/klim077/EtchReach-WeighingScale-Firmware/blob/main/assets/WeighingScaleSchematic.png)
+![Schematic](https://github.com/klim077/EtchReach-WeighingScale-Firmware/blob/main/assets/WeighingScaleSchematic1.png)

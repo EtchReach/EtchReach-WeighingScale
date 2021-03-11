@@ -18,7 +18,7 @@ char keys[ROWS][COLS] = {
 };
 byte rowPins[ROWS] = {A0, A1, A2, A3}; // connect to the row pinouts of the keypad, A0 to A3 pins (brown, red, orange, yellow)
 //byte colPins[COLS] = {A4, A5, 8}; // connect to the column pinouts of the keypad, A4, A5, D8 pins (green, blue, purple)
-byte colPins[COLS] = {A4, A5, 2}; // connect to the column pinouts of the keypad, A4, A5, D2 pins (green, blue, purple)
+byte colPins[COLS] = {A4, A5, A6}; // connect to the column pinouts of the keypad, A4, A5, D2 pins (green, blue, purple)
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
 
@@ -30,9 +30,9 @@ const int DIO = 9; // D9 pin (orange)
 TM1637Display display(CLK, DIO);
 
 // ========= button configurations =========
-const int tarePin = 4; // D4 pin, red button (wire from under resistor)
-const int readoutPin = 5; // D5 pin, blue button (wire from under resistor)
-const int targetVolPin = 6; // D6 pin, yellow button (wire from under resistor)
+const int tarePin = 3; // D4 pin, red button (wire from under resistor)
+const int readoutPin = 2; // D5 pin, blue button (wire from under resistor)
+const int targetVolPin = 4; // D6 pin, yellow button (wire from under resistor)
 
 
 // ========= buzzer configurations =========
@@ -40,7 +40,7 @@ const int buzzPin = 7; // D7 pin (positive leg)
 
 
 // ========= speaker configurations =========
-// D3 pin, orange wire (TIP)
+// D11 pin, orange wire (TIP)
 // GROUND, yellow wire (SLEEVE)
 // capacitor between SLEEVE and TIP (ground and digital pin
 // default output to D3, cannot change the output digital pin
@@ -309,6 +309,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200); // Starts the serial communication
   Serial.println("Weighing scale starting up");
+  voice.doNotUseNonInvertedOutput();
   voice.say(sp4_TURN);
   voice.say(sp2_ON);
 
@@ -319,7 +320,9 @@ void setup() {
   pinMode(readoutPin, INPUT); // Sets the readoutPin as an Input (readout button)
   pinMode(targetVolPin, INPUT); // Sets the targetVolPin as an Input (targetVol button)
   pinMode(buzzPin, OUTPUT); // Sets the buzzPin as an Output (buzzer)
-  
+  attachInterrupt(digitalPinToInterrupt(tarePin), tare, FALLING);
+  attachInterrupt(digitalPinToInterrupt(readoutPin), readout, FALLING);
+
   // lcd settings
   display.setBrightness(0x0f); // Sets the defaults LCD brightness
 
@@ -327,7 +330,7 @@ void setup() {
   // reset the device. perform measurements and tare everything
   //tare();
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(42600);                      // this value is obtained by calibrating the scale with known weights; see the README for details
+  scale.set_scale(52600);                      // this value is obtained by calibrating the scale with known weights; see the README for details
   tare();               // reset the scale to 0
   delay(100);
   voice.say(sp2_READY);
