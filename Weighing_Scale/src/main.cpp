@@ -40,16 +40,17 @@ const int buzzPin = 7; // D7 pin (positive leg)
 
 
 // ========= speaker configurations =========
-// D11 pin, orange wire (TIP)
-// GROUND, yellow wire (SLEEVE)
-// capacitor between SLEEVE and TIP (ground and digital pin
-// default output to D3, cannot change the output digital pin
-// default input is D11, LEAVE EMPTY and don't put in other devices to this pin, else code will break
+#include "SoftwareSerial.h"
+#include "DFRobotDFPlayerMini.h"
 
-// Go to the Talkie library, and find the C++ header files to get the variable names for the words 
-#include "Talkie.h"
-#include "Vocab_US_Large.h"
-Talkie voice;
+// Use pins 4 and 5 to communicate with DFPlayer Mini
+static const uint8_t PIN_MP3_TX = 4; // Connects to module's RX 
+static const uint8_t PIN_MP3_RX = 5; // Connects to module's TX 
+SoftwareSerial softwareSerial(PIN_MP3_RX, PIN_MP3_TX);
+
+// Create the Player object
+DFRobotDFPlayerMini player;
+
 
 // ========= HX711 Load Cell configurations =========
 #include "HX711.h"
@@ -86,66 +87,66 @@ int measure(){
 
 void tare(){
   scale.tare();
-  voice.say(sp3_ZERO);
+  player.play(36); // say "zero"
 }
 
 // ========= sayNumber function ========= 
 // Say any number between -999,999 and 999,999 
 void sayNumber(int n) {
   if (n<0) {
-    voice.say(sp2_MINUS);
+    player.play(12); // say "negative"
     sayNumber(-n);
   } else if (n==0) {
-    voice.say(sp2_ZERO);
+    player.play(36); // say "zero"
   } else {
     if (n>=1000) {
       int thousands = n / 1000;
       sayNumber(thousands);
-      voice.say(sp2_THOUSAND);
+      player.play(30); // say "thousand"
       n %= 1000;
-      if ((n > 0) && (n<100)) voice.say(sp2_AND);
+      if ((n > 0) && (n<100)) player.play(1); // say "and"
     }
     if (n>=100) {
       int hundreds = n / 100;
       sayNumber(hundreds);
-      voice.say(sp2_HUNDRED);
+      player.play(11); // say "hundred"
       n %= 100;
-      if (n > 0) voice.say(sp2_AND);
+      if (n > 0) player.play(1); // say "and"
     }
     if (n>19) {
       int tens = n / 10;
       switch (tens) {
-        case 2: voice.say(sp2_TWENTY); break;
-        case 3: voice.say(sp2_THIR_); voice.say(sp2_T); break;
-        case 4: voice.say(sp2_FOUR); voice.say(sp2_T);  break;
-        case 5: voice.say(sp2_FIF_);  voice.say(sp2_T); break;
-        case 6: voice.say(sp2_SIX);  voice.say(sp2_T); break;
-        case 7: voice.say(sp2_SEVEN);  voice.say(sp2_T); break;
-        case 8: voice.say(sp2_EIGHT);  voice.say(sp2_T); break;
-        case 9: voice.say(sp2_NINE);  voice.say(sp2_T); break;
+        case 2: player.play(33); player.play(24); break; // say "twen", then "t"
+        case 3: player.play(29); player.play(24); break; // say "thir", then "t"
+        case 4: player.play(9); player.play(24); break; // say "four", then "t"
+        case 5: player.play(7); player.play(24); break; // say "fif", then "t"
+        case 6: player.play(23); player.play(24); break; // say "six", then "t"
+        case 7: player.play(22); player.play(24); break; // say "seven", then "t"
+        case 8: player.play(5); player.play(24); break; // say "eight", then "t"
+        case 9: player.play(14); player.play(24); break; // say "nine", then "t"
       }
       n %= 10;
     }
     switch(n) {
-      case 1: voice.say(sp2_ONE); break;
-      case 2: voice.say(sp2_TWO); break;
-      case 3: voice.say(sp2_THREE); break;
-      case 4: voice.say(sp2_FOUR); break;
-      case 5: voice.say(sp2_FIVE); break;
-      case 6: voice.say(sp2_SIX); break;
-      case 7: voice.say(sp2_SEVEN); break;
-      case 8: voice.say(sp2_EIGHT); break;
-      case 9: voice.say(sp2_NINE); break;
-      case 10: voice.say(sp2_TEN); break;
-      case 11: voice.say(sp2_ELEVEN); break;
-      case 12: voice.say(sp2_TWELVE); break;
-      case 13: voice.say(sp2_THIR_); voice.say(sp2__TEEN); break;
-      case 14: voice.say(sp2_FOUR); voice.say(sp2__TEEN);break;
-      case 15: voice.say(sp2_FIF_); voice.say(sp2__TEEN); break;
-      case 16: voice.say(sp2_SIX); voice.say(sp2__TEEN); break;
-      case 17: voice.say(sp2_SEVEN); voice.say(sp2__TEEN); break;
-      case 18: voice.say(sp2_EIGHT); voice.say(sp2__TEEN); break;
-      case 19: voice.say(sp2_NINE); voice.say(sp2__TEEN); break;
+      case 1: player.play(16); break; // say "one"
+      case 2: player.play(34); break; // say "two"
+      case 3: player.play(31); break; // say "three"
+      case 4: player.play(9); break; // say "four"
+      case 5: player.play(8); break; // say "five"
+      case 6: player.play(23); break; // say "six"
+      case 7: player.play(22); break; // say "seven"
+      case 8: player.play(5); break; // say "eight"
+      case 9: player.play(14); break; // say "nine"
+      case 10: player.play(28); break; // say "ten"
+      case 11: player.play(6); break; // say "eleven"
+      case 12: player.play(32); break; // say "twelve"
+      case 13: player.play(29); player.play(27); break; // say "thir", then "teen"
+      case 14: player.play(9); player.play(27); break; // say "four", then "teen"
+      case 15: player.play(8); player.play(27); break; // say "fif", then "teen"
+      case 16: player.play(23); player.play(27); break; // say "six", then "teen"
+      case 17: player.play(22); player.play(27); break; // say "seven", then "teen"
+      case 18: player.play(5); player.play(27); break; // say "eight", then "teen"
+      case 19: player.play(14); player.play(27); break; // say "nine", then "teen"
     }
   }
   return;
@@ -156,8 +157,7 @@ void sayNumber(int n) {
 // BLUE BUTTON
 void readout() {
   Serial.println("\nReading out volume... " + String(currentReading) + "\n");
-  voice.say(sp3_CURRENT);
-  voice.say(sp2_VAL);
+  player.play(4); player.play(19); // say "current", then "reading"
   sayNumber((int)currentReading);
 }
 
@@ -168,13 +168,11 @@ void readout() {
 void readoutTarget(int target) {
   if (target == -1) {
     Serial.println("No target set");
-    voice.say(sp4_NO);
-    voice.say(sp4_TARGET);
+    player.play(15); player.play(26); player.play(35); // say "no", then "target", then "weight"
   }
   else {
     Serial.println("Reading out target... " + String(target));
-    voice.say(sp5_NEW);
-    voice.say(sp4_TARGET);
+    player.play(13); player.play(26); player.play(35); // say "new", then "target", then "weight"
     sayNumber((int)target);
   }
 }
@@ -185,14 +183,11 @@ void readoutTarget(int target) {
 void readoutTargetWeight() {
   if (targetWeight == -1) {
     Serial.println("No target weight set");
-    voice.say(sp4_NO);
-    voice.say(sp4_TARGET);
-    voice.say(sp2_VAL);
+    player.play(15); player.play(26); player.play(35); // say "no", then "target", then "weight"
   }
   else {
     Serial.println("Reading out weight volume... " + String(targetWeight));
-    voice.say(sp4_TARGET);
-    voice.say(sp2_VAL);
+    player.play(26); player.play(35); // say "target", then "weight"    
     sayNumber((int)targetWeight);
   }
 }
@@ -252,7 +247,7 @@ void input(char firstKey) {
 
   // set the target volume
   targetWeight = target;
-  voice.say(sp5_SET);
+  player.play(21); // say "setting"
   readoutTargetWeight();
   return;
 }
@@ -308,10 +303,26 @@ void buzz() {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200); // Starts the serial communication
-  Serial.println("Weighing scale starting up");
-  voice.doNotUseNonInvertedOutput();
-  voice.say(sp4_TURN);
-  voice.say(sp2_ON);
+  Serial.println("Weighing scale starting up");  
+  
+  // mp3 and speaker module init
+  // Init serial port for DFPlayer Mini
+  softwareSerial.begin(9600);
+
+  // Start communication with DFPlayer Mini
+  if (player.begin(softwareSerial)) {
+   Serial.println("DFPlayer OK");
+
+    // Set volume to maximum (0 to 30).
+    player.volume(30);
+    player.EQ(0); // equalize volume
+     
+  } else {
+    Serial.println("Connecting to DFPlayer Mini failed!");
+  }  
+  
+  player.play(18); // say "power up"
+
 
   // pin settings
   //pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output (ultrasonic sensor)
@@ -326,14 +337,14 @@ void setup() {
   // lcd settings
   display.setBrightness(0x0f); // Sets the defaults LCD brightness
 
-  //voice.say(sp2_CALIBRATE);
+  
   // reset the device. perform measurements and tare everything
-  //tare();
+  player.play(2); // say "calibrating"
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(52600);                      // this value is obtained by calibrating the scale with known weights; see the README for details
-  tare();               // reset the scale to 0
+  scale.set_scale(52600); // this value is obtained by calibrating the scale with known weights; see the README for details
+  tare(); // reset the scale to 0
   delay(100);
-  voice.say(sp2_READY);
+  player.play(20); // say "ready"
 }
 
 void loop() {
