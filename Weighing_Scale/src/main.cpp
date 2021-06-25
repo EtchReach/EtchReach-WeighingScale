@@ -85,12 +85,12 @@ void setup() {
   softwareSerial.begin(9600); // Init serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // Start communication with DFPlayer Mini
-    player.volume(1); // Set volume to maximum (0 to 30).
+    player.volume(1); // Set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
   }  
-  player.play(18); // say "power up"
+  playTrack(18); // say "power up"
 
 
   // ========= 4x3 keypad init ========= 
@@ -122,7 +122,6 @@ void setup() {
 
   // ========= program init =========
   tare(); // reset the scale to 0  
-  player.play(20); // say "ready"
 }
 
 
@@ -167,7 +166,7 @@ void loop() {
   
   
   // ========= time delay before next loop =========   
-  delay(300);
+  delay(200);
 }
 
 
@@ -179,6 +178,23 @@ void loop() {
  * =============================================
  */
 
+// ======== playTrack function =========
+// uses the DFPlayer mini to play a track
+void playTrack(int trackToPlay) {  
+  // if player.readState() == 512 then player has stopped. if player.readState() == 513, means playing
+  while (player.readState() == 513) {
+    delay(100);
+  }
+  player.stop();
+  player.play(trackToPlay);
+
+  // if player.readState() == 512 then player has stopped. if player.readState() == 513, means playing
+  while (player.readState() == 512) {
+    delay(100);
+  }
+}
+  
+  
 // ======== measure function =========
 // uses the load cell to take a measurement
 int measure(){
@@ -192,10 +208,10 @@ int measure(){
 
 // ======== tare function =========
 void tare() {
-  player.play(2); // say "calibrating"
+  playTrack(2); // say "calibrating"
   scale.tare(); // taring
-  player.play(35); player.play(36); // say "weight", then "zero"
-  player.play(20); // say "ready"
+  playTrack(35); playTrack(36); // say "weight", then "zero"
+  playTrack(20); // say "ready"
 }
 
 
@@ -204,7 +220,7 @@ void tare() {
 // BLUE BUTTON
 void readout() {
   Serial.println("\nReading out currentReading... " + String(currentReading) + "\n");
-  player.play(4); player.play(19); // say "current", then "reading"
+  playTrack(4); playTrack(19); // say "current", then "reading"
   sayNumber((int)currentReading);
 }
 
@@ -213,59 +229,59 @@ void readout() {
 // Say any number between -999,999 and 999,999 
 void sayNumber(int n) {
   if (n<0) {
-    player.play(12); // say "negative"
+    playTrack(12); // say "negative"
     sayNumber(-n);
   } else if (n==0) {
-    player.play(36); // say "zero"
+    playTrack(36); // say "zero"
   } else {
     if (n>=1000) {
       int thousands = n / 1000;
       sayNumber(thousands);
-      player.play(30); // say "thousand"
+      playTrack(30); // say "thousand"
       n %= 1000;
-      if ((n > 0) && (n<100)) player.play(1); // say "and"
+      if ((n > 0) && (n<100)) playTrack(1); // say "and"
     }
     if (n>=100) {
       int hundreds = n / 100;
       sayNumber(hundreds);
-      player.play(11); // say "hundred"
+      playTrack(11); // say "hundred"
       n %= 100;
-      if (n > 0) player.play(1); // say "and"
+      if (n > 0) playTrack(1); // say "and"
     }
     if (n>19) {
       int tens = n / 10;
       switch (tens) {
-        case 2: player.play(33); player.play(24); break; // say "twen", then "t"
-        case 3: player.play(29); player.play(24); break; // say "thir", then "t"
-        case 4: player.play(9); player.play(24); break; // say "four", then "t"
-        case 5: player.play(7); player.play(24); break; // say "fif", then "t"
-        case 6: player.play(23); player.play(24); break; // say "six", then "t"
-        case 7: player.play(22); player.play(24); break; // say "seven", then "t"
-        case 8: player.play(5); player.play(24); break; // say "eight", then "t"
-        case 9: player.play(14); player.play(24); break; // say "nine", then "t"
+        case 2: playTrack(33); playTrack(24); break; // say "twen", then "t"
+        case 3: playTrack(29); playTrack(24); break; // say "thir", then "t"
+        case 4: playTrack(9); playTrack(24); break; // say "four", then "t"
+        case 5: playTrack(7); playTrack(24); break; // say "fif", then "t"
+        case 6: playTrack(23); playTrack(24); break; // say "six", then "t"
+        case 7: playTrack(22); playTrack(24); break; // say "seven", then "t"
+        case 8: playTrack(5); playTrack(24); break; // say "eight", then "t"
+        case 9: playTrack(14); playTrack(24); break; // say "nine", then "t"
       }
       n %= 10;
     }
     switch(n) {
-      case 1: player.play(16); break; // say "one"
-      case 2: player.play(34); break; // say "two"
-      case 3: player.play(31); break; // say "three"
-      case 4: player.play(9); break; // say "four"
-      case 5: player.play(8); break; // say "five"
-      case 6: player.play(23); break; // say "six"
-      case 7: player.play(22); break; // say "seven"
-      case 8: player.play(5); break; // say "eight"
-      case 9: player.play(14); break; // say "nine"
-      case 10: player.play(28); break; // say "ten"
-      case 11: player.play(6); break; // say "eleven"
-      case 12: player.play(32); break; // say "twelve"
-      case 13: player.play(29); player.play(27); break; // say "thir", then "teen"
-      case 14: player.play(9); player.play(27); break; // say "four", then "teen"
-      case 15: player.play(8); player.play(27); break; // say "fif", then "teen"
-      case 16: player.play(23); player.play(27); break; // say "six", then "teen"
-      case 17: player.play(22); player.play(27); break; // say "seven", then "teen"
-      case 18: player.play(5); player.play(27); break; // say "eight", then "teen"
-      case 19: player.play(14); player.play(27); break; // say "nine", then "teen"
+      case 1: playTrack(16); break; // say "one"
+      case 2: playTrack(34); break; // say "two"
+      case 3: playTrack(31); break; // say "three"
+      case 4: playTrack(9); break; // say "four"
+      case 5: playTrack(8); break; // say "five"
+      case 6: playTrack(23); break; // say "six"
+      case 7: playTrack(22); break; // say "seven"
+      case 8: playTrack(5); break; // say "eight"
+      case 9: playTrack(14); break; // say "nine"
+      case 10: playTrack(28); break; // say "ten"
+      case 11: playTrack(6); break; // say "eleven"
+      case 12: playTrack(32); break; // say "twelve"
+      case 13: playTrack(29); playTrack(27); break; // say "thir", then "teen"
+      case 14: playTrack(9); playTrack(27); break; // say "four", then "teen"
+      case 15: playTrack(8); playTrack(27); break; // say "fif", then "teen"
+      case 16: playTrack(23); playTrack(27); break; // say "six", then "teen"
+      case 17: playTrack(22); playTrack(27); break; // say "seven", then "teen"
+      case 18: playTrack(5); playTrack(27); break; // say "eight", then "teen"
+      case 19: playTrack(14); playTrack(27); break; // say "nine", then "teen"
     }
   }
   return;
@@ -278,7 +294,7 @@ void setTarget() {
   
   // ========= keep checking if keypad was pressed ========= 
   keyPressed = keypad.getKey();
-  if (keyPressed) {
+  while (!keyPressed) {
     input(keyPressed);
   }  
 
@@ -289,10 +305,10 @@ void setTarget() {
 void readoutCurrentTarget() {
   if (currentTarget == -1) {
     Serial.println("no current target");
-    player.play(15); player.play(4); player.play(26); // say "no", then "current", then "target"
+    playTrack(15); playTrack(4); playTrack(26); // say "no", then "current", then "target"
   } else {
     Serial.println("current target... " + String(currentTarget));
-    player.play(4); player.play(26); // say "current", then "target"
+    playTrack(4); playTrack(26); // say "current", then "target"
     sayNumber((int)currentTarget);
   }
 }
@@ -304,11 +320,11 @@ void readoutCurrentTarget() {
 void readoutTarget(int target) {
   if (target == -1) {
     Serial.println("No target set");
-    player.play(15); player.play(26); player.play(35); // say "no", then "target", then "weight"
+    playTrack(15); playTrack(26); playTrack(35); // say "no", then "target", then "weight"
   }
   else {
     Serial.println("Reading out target... " + String(target));
-    player.play(13); player.play(26); player.play(35); // say "new", then "target", then "weight"
+    playTrack(13); playTrack(26); playTrack(35); // say "new", then "target", then "weight"
     sayNumber((int)target);
   }
 }
@@ -323,12 +339,12 @@ void input(char keyPressed) {
   if (keyPressed == '#') {
     // simply exit the setTarget mode with no change
     Serial.println("no new target");
-    player.play(15); player.play(13); player.play(26); // say "no", then "new", then "target"
+    playTrack(15); playTrack(13); playTrack(26); // say "no", then "new", then "target"
     return;
   } else if (keyPressed == '*') {
     // delete the currentTarget and exit setTarget mode
     Serial.println("setting zero target");
-    player.play(21); player.play(36); player.play(26); // say "setting", then "zero", then "target"
+    playTrack(21); playTrack(36); playTrack(26); // say "setting", then "zero", then "target"
     return;
   } else {
     target = target * 10 + String(keyPressed).toInt();
@@ -366,7 +382,7 @@ void input(char keyPressed) {
 
   // set the currentTarget to the confirmed target 
   currentTarget = target;
-  player.play(21); // say "setting"
+  playTrack(21); // say "setting"
   readoutCurrentTarget();
   return;
 }
