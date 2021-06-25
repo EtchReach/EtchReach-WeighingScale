@@ -1,73 +1,177 @@
 /* =============================================
- *                  CONFIGURATIONS
+*       CONFIGURATIONS FOR ARDUINO COMPONENTS
  * =============================================
  */
-
 #include <Arduino.h>
- 
+
+
+// ========= DFPlayer mini mp3 module and speaker configurations =========
+// connect mp3 module's SPK1, SPK2 to TRS Breakout's TIP and SLEEVE. Order does not matter
+// connect mp3 module's VCC and GND to the arduino's VCC and GND
+// connect a resistor on the RX pin of the mp3 module 
+#include "SoftwareSerial.h"
+#include "DFRobotDFPlayerMini.h"
+static const uint8_t PIN_MP3_TX = 4; // D4 pin, connects to mp3 module's RX 
+static const uint8_t PIN_MP3_RX = 5; // D5 pin, connects to mp3 module's TX 
+SoftwareSerial softwareSerial(PIN_MP3_RX, PIN_MP3_TX);
+DFRobotDFPlayerMini player; // Create the mp3 player object
+
+
 // ========= 4x3 keypad configurations =========
 #include <Keypad.h>
-
-const byte ROWS = 4; // four rows
-const byte COLS = 3; // three columns
+const byte ROWS = 4; // four rows on the keypad
+const byte COLS = 3; // three columns on the keypad 
 char keys[ROWS][COLS] = {
   {'1','2','3'},
   {'4','5','6'},
   {'7','8','9'},
   {'*','0','#'}
 };
-byte rowPins[ROWS] = {A0, A1, A2, A3}; // connect to the row pinouts of the keypad, A0 to A3 pins (brown, red, orange, yellow)
-//byte colPins[COLS] = {A4, A5, 8}; // connect to the column pinouts of the keypad, A4, A5, D8 pins (green, blue, purple)
-byte colPins[COLS] = {A4, A5, A6}; // connect to the column pinouts of the keypad, A4, A5, D2 pins (green, blue, purple)
+// keypad facing upwards, wiring is A0 to A5, D6 from left to right of the keypad
+// keypad requires digital pin, but A6, A7 cannot be used as digital (strictly analog) 
+byte rowPins[ROWS] = {A0, A1, A2, A3}; // connect to the row pinouts of the keypad on A0-A3 pins
+byte colPins[COLS] = {A4, A5, 6}; // connect to the column pinouts of the keypad on A4-A5, D6 pins
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
+char keyPressed; // tracking which key was pressed on the keypad
 
-
-// ========= tm1637 lcd panel configurations =========
+// ========= TM1637 lcd panel configurations =========
 #include <Arduino.h>
 #include <TM1637Display.h>
-const int CLK = 8; // D8 pin (yellow)
-const int DIO = 9; // D9 pin (orange)
+const int CLK = 8; // D8 pin 
+const int DIO = 9; // D9 pin 
 TM1637Display display(CLK, DIO);
 
-// ========= button configurations =========
-const int tarePin = 3; // D4 pin, red button (wire from under resistor)
-const int readoutPin = 2; // D5 pin, blue button (wire from under resistor)
-const int targetVolPin = 4; // D6 pin, yellow button (wire from under resistor)
+
+// ========= I/O button configurations =========
+const int tarePin = 3; // D2 pin, tare button
+const int readoutPin = 2; // D3 pin, readout button
+const int setTargetPin = 11; // D11 pin, setTarget button
+int tareState; // tracking HIGH-LOW state of tarePin
+int readoutState; // tracking HIGH-LOW state of readoutPin
+int setTargetState; // tracking HIGH-LOW state of setTargetPin
 
 
-// ========= buzzer configurations =========
+// ========= Piezzobuzzer configurations =========
 const int buzzPin = 7; // D7 pin (positive leg)
-
-
-// ========= speaker configurations =========
-#include "SoftwareSerial.h"
-#include "DFRobotDFPlayerMini.h"
-
-// Use pins 4 and 5 to communicate with DFPlayer Mini
-static const uint8_t PIN_MP3_TX = 4; // Connects to module's RX 
-static const uint8_t PIN_MP3_RX = 5; // Connects to module's TX 
-SoftwareSerial softwareSerial(PIN_MP3_RX, PIN_MP3_TX);
-
-// Create the Player object
-DFRobotDFPlayerMini player;
 
 
 // ========= HX711 Load Cell configurations =========
 #include "HX711.h"
-const int LOADCELL_DOUT_PIN = 10;
-const int LOADCELL_SCK_PIN = 12;
+const int LOADCELL_DOUT_PIN = 10; // D10 pin
+const int LOADCELL_SCK_PIN = 12; // D12 pin
+HX711 scale; // create the scale object
 
-HX711 scale;
 
-// ========= variables and constants =========
+// ========= variables and constants configurations =========
+float currentTarget; // the target has to be keyed in through the keypad, if -1 it means no target and we will not be providing help with buzzer sounds
+float currentReading; // the currently measured weight 
 
-// helping variables
-float targetWeight = -1; // the target volume has to be keyed in through the keypad, if -1 it means no target and we will not be providing help with buzzer sounds
 
-// measured variables
-float currentReading = 0; // the currently measured weight 
-//float tareDistance = -1; // the current tared zero height, if -1 it means it hasn't been tared yet
-//float currentVolume = 0; // the currently measured volume
+
+
+
+/* =============================================
+ *                  MAIN BODY
+ * =============================================
+ */
+
+void setup() {
+  // ========= Commmunication with computer ========= 
+  Serial.begin(115200); // Starts the serial communication
+  Serial.println("Weighing scale starting up");  
+  
+
+  // ========= DFPlayer mini mp3 module and speaker init =========
+  softwareSerial.begin(9600); // Init serial port for DFPlayer Mini
+  if (player.begin(softwareSerial)) {
+    Serial.println("DFPlayer OK"); // Start communication with DFPlayer Mini
+    player.volume(1); // Set volume to maximum (0 to 30).
+    player.EQ(0); // equalize volume
+  } else {
+    Serial.println("Connecting to DFPlayer Mini failed!");
+  }  
+  player.play(18); // say "power up"
+
+
+  // ========= 4x3 keypad init ========= 
+
+
+  // ========= TM1637 lcd panel init =========
+  display.setBrightness(0x0f); // Sets the defaults LCD brightness
+  
+
+  // ========= I/O button init =========
+  pinMode(tarePin, INPUT); // Sets the tarePin as an Input (tare button)
+  pinMode(readoutPin, INPUT); // Sets the readoutPin as an Input (readout button)
+  pinMode(setTargetPin, INPUT); // Sets the setTargetPin as an Input (setTarget button)
+
+
+  // ========= Piezzobuzzer init =========
+  pinMode(buzzPin, OUTPUT); // Sets the buzzPin as an Output (buzzer)
+
+
+  // ========= HX711 Load Cell init =========
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
+  scale.set_scale(52600); // this value is obtained by calibrating the scale with known weights; see the README for details
+
+
+  // ========= variables and constants init =========
+  currentTarget = -1; // no target 
+  currentReading = 0; // no reading 
+
+
+  // ========= program init =========
+  tare(); // reset the scale to 0  
+  player.play(20); // say "ready"
+}
+
+
+void loop() {
+  // ========= keep checking latest reading ========= 
+  currentReading = measure(); // take the current reading from the sensor
+  Serial.println("currentReading" + String(currentReading));
+
+
+  // ========= keep checking if tare button was pressed ========= 
+  tareState = digitalRead(tarePin);
+  if (tareState == HIGH) {
+    tare();
+  }
+
+
+  // ========= keep checking if readout button was pressed ========= 
+  readoutState = digitalRead(readoutPin);
+  if (readoutState == HIGH) {
+    readout();
+  }  
+
+
+  // ========= keep checking if setTarget button was pressed ========= 
+  setTargetState = digitalRead(setTargetPin);
+  if (setTargetState == HIGH) {
+    setTarget();
+  }    
+
+
+  // ========= keep checking if there is a need to sound the buzzer ========= 
+  // currentTarget == -1 means that we have no currentTarget set hence no need to bother with the buzzer 
+  if (currentTarget != -1) {
+    buzz();
+  }
+
+
+  // ========= keep updating the tm1637 lcd panel ========= 
+  uint8_t data[] = { 0x0, 0x0, 0x0, 0x0 };
+  display.setSegments(data);
+  display.showNumberDec(currentReading, false, 4, 0);
+  
+  
+  // ========= time delay before next loop =========   
+  delay(300);
+}
+
+
+
 
 
 /* =============================================
@@ -75,20 +179,35 @@ float currentReading = 0; // the currently measured weight
  * =============================================
  */
 
-// ======== Measure function =========
+// ======== measure function =========
 // uses the load cell to take a measurement
 int measure(){
   int Reading = int(scale.get_units(10)*100);
-  scale.power_down();
-  delay(1000);
-  scale.power_up();
+  // scale.power_down();
+  // delay(1000);
+  // scale.power_up();
   return Reading;
 }
 
-void tare(){
-  scale.tare();
-  player.play(36); // say "zero"
+
+// ======== tare function =========
+void tare() {
+  player.play(2); // say "calibrating"
+  scale.tare(); // taring
+  player.play(35); player.play(36); // say "weight", then "zero"
+  player.play(20); // say "ready"
 }
+
+
+// ========= readout function ========= 
+// performs and interrupt and reads out the current volume at that point in time, once
+// BLUE BUTTON
+void readout() {
+  Serial.println("\nReading out currentReading... " + String(currentReading) + "\n");
+  player.play(4); player.play(19); // say "current", then "reading"
+  sayNumber((int)currentReading);
+}
+
 
 // ========= sayNumber function ========= 
 // Say any number between -999,999 and 999,999 
@@ -152,13 +271,30 @@ void sayNumber(int n) {
   return;
 }
 
-// ========= readout function ========= 
-// performs and interrupt and reads out the current volume at that point in time, once
-// BLUE BUTTON
-void readout() {
-  Serial.println("\nReading out volume... " + String(currentReading) + "\n");
-  player.play(4); player.play(19); // say "current", then "reading"
-  sayNumber((int)currentReading);
+
+// ========= setTarget function ========= 
+void setTarget() {
+  readoutCurrentTarget();
+  
+  // ========= keep checking if keypad was pressed ========= 
+  keyPressed = keypad.getKey();
+  if (keyPressed) {
+    input(keyPressed);
+  }  
+
+}
+
+
+// ========= readoutTarget function ========= 
+void readoutCurrentTarget() {
+  if (currentTarget == -1) {
+    Serial.println("no current target");
+    player.play(15); player.play(4); player.play(26); // say "no", then "current", then "target"
+  } else {
+    Serial.println("current target... " + String(currentTarget));
+    player.play(4); player.play(26); // say "current", then "target"
+    sayNumber((int)currentTarget);
+  }
 }
 
 
@@ -178,58 +314,41 @@ void readoutTarget(int target) {
 }
 
 
-// ========= readoutTargetWeight function ========= 
-// reads out the target weight that has been set
-void readoutTargetWeight() {
-  if (targetWeight == -1) {
-    Serial.println("No target weight set");
-    player.play(15); player.play(26); player.play(35); // say "no", then "target", then "weight"
-  }
-  else {
-    Serial.println("Reading out weight volume... " + String(targetWeight));
-    player.play(26); player.play(35); // say "target", then "weight"    
-    sayNumber((int)targetWeight);
-  }
-}
-
-
-
-// ========= targetVol function ========= 
-// YELLOW BUTTON
-void targetVol() {
-  readoutTargetWeight();
-}
-
-
 // ========= input function ========= 
-// input function for the targetVolume
-void input(char firstKey) {
-  int target = 0;
+// input function for the targetWeight
+void input(char keyPressed) {
+  int target = 0; // assign temporary target
 
-  // very first key must be a digit, else exit input mode
-  if (firstKey == '*' or firstKey == '#') {
-    targetWeight = -1;
-    Serial.println("Target weight cleared");
-    readoutTarget(targetWeight);
+  // very first key must be a digit, else exit setTarget mode
+  if (keyPressed == '#') {
+    // simply exit the setTarget mode with no change
+    Serial.println("no new target");
+    player.play(15); player.play(13); player.play(26); // say "no", then "new", then "target"
+    return;
+  } else if (keyPressed == '*') {
+    // delete the currentTarget and exit setTarget mode
+    Serial.println("setting zero target");
+    player.play(21); player.play(36); player.play(26); // say "setting", then "zero", then "target"
     return;
   } else {
-    target = target * 10 + String(firstKey).toInt();
+    target = target * 10 + String(keyPressed).toInt();
     readoutTarget(target);
   }
 
-  char key = firstKey;
 
-  // # key will be our terminating character and will confirm our targetVolume 
+  // loop and keep reading new input until new target is confirmed
+  char key = keyPressed;
+
   while (1) {
     key = keypad.getKey();
 
     if (key) {
-      // terminating condition
+      // terminating condition: # key will be our terminating character and will confirm our targetWeight 
       if (key == '#') {
         break;
       }
   
-      // backspace condition
+      // backspace condition: * key will be our backspace character
       else if (key == '*') {
         target /= 10;
         readoutTarget(target);
@@ -245,20 +364,19 @@ void input(char firstKey) {
     }
   }
 
-  // set the target volume
-  targetWeight = target;
+  // set the currentTarget to the confirmed target 
+  currentTarget = target;
   player.play(21); // say "setting"
-  readoutTargetWeight();
+  readoutCurrentTarget();
   return;
 }
 
 
-
 // ========= buzz function ========= 
 // controls the buzzing tones for volume indications (close, overshot, hit)
-// 1 - normal. 2 - close (approaching targetVolume). 3 - overshot (went over targetVolume). 4 - hit (on targetVolume).
+// 1 - normal. 2 - close (approaching targetWeight). 3 - overshot (went over targetWeight). 4 - hit (on targetWeight).
 void buzz() {
-  float difference = targetWeight - currentReading;
+  float difference = currentTarget - currentReading;
 
   // normal mode, no sound
   if (difference >= 50) {
@@ -291,104 +409,4 @@ void buzz() {
     noTone(buzzPin);
     delay(500);
   }
-}
-
-
-
-/* =============================================
- *                  MAIN BODY
- * =============================================
- */
-
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200); // Starts the serial communication
-  Serial.println("Weighing scale starting up");  
-  
-  // mp3 and speaker module init
-  // Init serial port for DFPlayer Mini
-  softwareSerial.begin(9600);
-
-  // Start communication with DFPlayer Mini
-  if (player.begin(softwareSerial)) {
-   Serial.println("DFPlayer OK");
-
-    // Set volume to maximum (0 to 30).
-    player.volume(30);
-    player.EQ(0); // equalize volume
-     
-  } else {
-    Serial.println("Connecting to DFPlayer Mini failed!");
-  }  
-  
-  player.play(18); // say "power up"
-
-
-  // pin settings
-  //pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output (ultrasonic sensor)
-  //pinMode(echoPin, INPUT); // Sets the echoPin as an Input (ultrasonic sensor)
-  pinMode(tarePin, INPUT); // Sets the tarePin as an Input (tare button)
-  pinMode(readoutPin, INPUT); // Sets the readoutPin as an Input (readout button)
-  pinMode(targetVolPin, INPUT); // Sets the targetVolPin as an Input (targetVol button)
-  pinMode(buzzPin, OUTPUT); // Sets the buzzPin as an Output (buzzer)
-  attachInterrupt(digitalPinToInterrupt(tarePin), tare, FALLING);
-  attachInterrupt(digitalPinToInterrupt(readoutPin), readout, FALLING);
-
-  // lcd settings
-  display.setBrightness(0x0f); // Sets the defaults LCD brightness
-
-  
-  // reset the device. perform measurements and tare everything
-  player.play(2); // say "calibrating"
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(52600); // this value is obtained by calibrating the scale with known weights; see the README for details
-  tare(); // reset the scale to 0
-  delay(100);
-  player.play(20); // say "ready"
-}
-
-void loop() {
-  // put your main code here, to run repeatedly:
-  currentReading = measure(); // take the current distance
-  Serial.println("currentReading" + String(currentReading));
-
-  // ========= tare ========= 
-  int tareState = digitalRead(tarePin);
-  if (tareState == HIGH) {
-    tare();
-  }
-
-  // ========= readout ========= 
-  int readoutState = digitalRead(readoutPin);
-  if (readoutState == HIGH) {
-    readout();
-  }  
-
-  // // ========= targetVol ========= 
-  // int targetVolState = digitalRead(targetVolPin);
-  // if (targetVolState == HIGH) {
-  //   targetVol();
-  // }    
-
-  // ========= input ========= 
-  char firstKey = keypad.getKey();
-  if (firstKey) {
-    input(firstKey);
-  }
-
-
-  // ========= measuring to targetWeight ========= 
-  // targetWeight == -1 means that we have no targetWeight set hence no need to bother with the buzzer nonsense
-  if (targetWeight != -1) {
-    buzz();
-  }
-
-  
-
-  // ========= tm1637 lcd panel ========= 
-  uint8_t data[] = { 0x0, 0x0, 0x0, 0x0 };
-  display.setSegments(data);
-  display.showNumberDec(currentReading, false, 4, 0);
-  //display.showNumberDec(currentDistance, false, 4, 0);
-  delay(500);
 }
