@@ -85,7 +85,7 @@ void setup() {
   softwareSerial.begin(9600); // Init serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // Start communication with DFPlayer Mini
-    player.volume(1); // Set volume (0 to 30).
+    player.volume(25); // Set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
@@ -181,17 +181,16 @@ void loop() {
 // ======== playTrack function =========
 // uses the DFPlayer mini to play a track
 void playTrack(int trackToPlay) {  
-  // if player.readState() == 512 then player has stopped. if player.readState() == 513, means playing
+  // if player.readState() == 513 then player is playing. if player.readState() == 512 then player has stopped
   while (player.readState() == 513) {
     delay(100);
   }
   player.stop();
   player.play(trackToPlay);
 
-  // if player.readState() == 512 then player has stopped. if player.readState() == 513, means playing
-  while (player.readState() == 512) {
+  while (player.readState() == 513) {
     delay(100);
-  }
+  }  
 }
   
   
@@ -295,9 +294,12 @@ void setTarget() {
   // ========= keep checking if keypad was pressed ========= 
   keyPressed = keypad.getKey();
   while (!keyPressed) {
-    input(keyPressed);
+    keyPressed = keypad.getKey();
   }  
+  input(keyPressed);
 
+  // reset the keyPressed
+  keyPressed = NULL;
 }
 
 
@@ -333,6 +335,8 @@ void readoutTarget(int target) {
 // ========= input function ========= 
 // input function for the targetWeight
 void input(char keyPressed) {
+  Serial.print("keyPressed: ");
+  Serial.println(keyPressed);
   int target = 0; // assign temporary target
 
   // very first key must be a digit, else exit setTarget mode
@@ -344,6 +348,7 @@ void input(char keyPressed) {
   } else if (keyPressed == '*') {
     // delete the currentTarget and exit setTarget mode
     Serial.println("setting zero target");
+    currentTarget = -1; 
     playTrack(21); playTrack(36); playTrack(26); // say "setting", then "zero", then "target"
     return;
   } else {
