@@ -5,15 +5,18 @@
 #include <Arduino.h>
 
 
+// ========= Vocabulary =========
+#include "TTS_AUDIO.h"
+
+
 // ========= DFPlayer mini mp3 module and speaker configurations =========
 // connect mp3 module's SPK1, SPK2 to TRS Breakout's TIP and SLEEVE. Order does not matter
 // connect mp3 module's VCC and GND to the arduino's VCC and GND
-// connect a resistor on the RX pin of the mp3 module 
 #include "SoftwareSerial.h"
 #include "DFRobotDFPlayerMini.h"
-static const uint8_t PIN_MP3_TX = 4; // D4 pin, connects to mp3 module's RX 
-static const uint8_t PIN_MP3_RX = 5; // D5 pin, connects to mp3 module's TX 
-SoftwareSerial softwareSerial(PIN_MP3_RX, PIN_MP3_TX);
+static const uint8_t mp3TxPin = 4; // D4 pin, connects to mp3 module's RX 
+static const uint8_t mp3RxPin = 5; // D5 pin, connects to mp3 module's TX 
+SoftwareSerial softwareSerial(mp3RxPin, mp3TxPin);
 DFRobotDFPlayerMini player; // Create the mp3 player object
 
 
@@ -34,6 +37,7 @@ byte colPins[COLS] = {A4, A5, 6}; // connect to the column pinouts of the keypad
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 char keyPressed; // tracking which key was pressed on the keypad
 
+
 // ========= TM1637 lcd panel configurations =========
 #include <Arduino.h>
 #include <TM1637Display.h>
@@ -45,10 +49,8 @@ TM1637Display display(CLK, DIO);
 // ========= I/O button configurations =========
 const int tarePin = 3; // D2 pin, tare button
 const int readoutPin = 2; // D3 pin, readout button
-const int setTargetPin = 11; // D11 pin, setTarget button
 int tareState; // tracking HIGH-LOW state of tarePin
 int readoutState; // tracking HIGH-LOW state of readoutPin
-int setTargetState; // tracking HIGH-LOW state of setTargetPin
 
 
 // ========= Piezzobuzzer configurations =========
@@ -77,37 +79,36 @@ float currentReading; // the currently measured weight
 
 void setup() {
   // ========= Commmunication with computer ========= 
-  Serial.begin(115200); // Starts the serial communication
+  Serial.begin(115200); // starts the serial communication
   Serial.println("Weighing scale starting up");  
   
 
   // ========= DFPlayer mini mp3 module and speaker init =========
-  softwareSerial.begin(9600); // Init serial port for DFPlayer Mini
+  softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
-    Serial.println("DFPlayer OK"); // Start communication with DFPlayer Mini
-    player.volume(25); // Set volume (0 to 30).
+    Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
+    player.volume(15); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
   }  
-  playTrack(18); // say "power up"
+  playTrack(mp3_POWER_UP); 
 
 
   // ========= 4x3 keypad init ========= 
 
 
   // ========= TM1637 lcd panel init =========
-  display.setBrightness(0x0f); // Sets the defaults LCD brightness
+  display.setBrightness(0x0f); // sets the defaults LCD brightness
   
 
   // ========= I/O button init =========
-  pinMode(tarePin, INPUT); // Sets the tarePin as an Input (tare button)
-  pinMode(readoutPin, INPUT); // Sets the readoutPin as an Input (readout button)
-  pinMode(setTargetPin, INPUT); // Sets the setTargetPin as an Input (setTarget button)
+  pinMode(tarePin, INPUT); // sets the tarePin as an Input (tare button)
+  pinMode(readoutPin, INPUT); // sets the readoutPin as an Input (readout button)
 
 
   // ========= Piezzobuzzer init =========
-  pinMode(buzzPin, OUTPUT); // Sets the buzzPin as an Output (buzzer)
+  pinMode(buzzPin, OUTPUT); // sets the buzzPin as an Output (buzzer)
 
 
   // ========= HX711 Load Cell init =========
@@ -128,7 +129,6 @@ void setup() {
 void loop() {
   // ========= keep checking latest reading ========= 
   currentReading = measure(); // take the current reading from the sensor
-  Serial.println("currentReading" + String(currentReading));
 
 
   // ========= keep checking if tare button was pressed ========= 
@@ -145,11 +145,12 @@ void loop() {
   }  
 
 
-  // ========= keep checking if setTarget button was pressed ========= 
-  setTargetState = digitalRead(setTargetPin);
-  if (setTargetState == HIGH) {
-    setTarget();
-  }    
+  // ========= keep checking if the keypad was pressed ========= 
+  keyPressed = keypad.getKey();
+  if (keyPressed) {
+    target(keyPressed);
+  }  
+
 
 
   // ========= keep checking if there is a need to sound the buzzer ========= 
@@ -180,17 +181,25 @@ void loop() {
 
 // ======== playTrack function =========
 // uses the DFPlayer mini to play a track
-void playTrack(int trackToPlay) {  
+void playTrack(int trackToPlay) {
+  Serial.println("\nplayTrack() - track to play: " + String(trackToPlay));
+
   // if player.readState() == 513 then player is playing. if player.readState() == 512 then player has stopped
   while (player.readState() == 513) {
+    Serial.println("playTrack() - player busy"); 
     delay(100);
   }
+
+  Serial.println("playTrack() - playing now: " + String(trackToPlay)); 
   player.stop();
   player.play(trackToPlay);
 
   while (player.readState() == 513) {
+    Serial.println("playTrack() - player busy");
     delay(100);
   }  
+
+  Serial.print("\nplayTrack() - finished playing\n");
 }
   
   
@@ -198,28 +207,28 @@ void playTrack(int trackToPlay) {
 // uses the load cell to take a measurement
 int measure(){
   int Reading = int(scale.get_units(10)*100);
-  // scale.power_down();
-  // delay(1000);
-  // scale.power_up();
+  Serial.println("measure() - currentReading: " + String(currentReading));
   return Reading;
 }
 
 
 // ======== tare function =========
 void tare() {
-  playTrack(2); // say "calibrating"
+  Serial.println("\ntare() - start taring");
+  playTrack(mp3_CALIBRATING); 
   scale.tare(); // taring
-  playTrack(35); playTrack(36); // say "weight", then "zero"
-  playTrack(20); // say "ready"
+  playTrack(mp3_WEIGHT); playTrack(mp3_ZERO); 
+  playTrack(mp3_READY); 
+  Serial.println("tare() - finish taring\n");
 }
 
 
 // ========= readout function ========= 
-// performs and interrupt and reads out the current volume at that point in time, once
+// performs and interrupt and reads out the current reading at that point in time, once
 // BLUE BUTTON
 void readout() {
-  Serial.println("\nReading out currentReading... " + String(currentReading) + "\n");
-  playTrack(4); playTrack(19); // say "current", then "reading"
+  Serial.println("\nreadout() - current reading: " + String(currentReading) + "\n");
+  playTrack(mp3_CURRENT); playTrack(mp3_READING); 
   sayNumber((int)currentReading);
 }
 
@@ -228,59 +237,59 @@ void readout() {
 // Say any number between -999,999 and 999,999 
 void sayNumber(int n) {
   if (n<0) {
-    playTrack(12); // say "negative"
+    playTrack(mp3_NEGATIVE); 
     sayNumber(-n);
   } else if (n==0) {
-    playTrack(36); // say "zero"
+    playTrack(mp3_ZERO); 
   } else {
     if (n>=1000) {
       int thousands = n / 1000;
       sayNumber(thousands);
-      playTrack(30); // say "thousand"
+      playTrack(mp3_THOUSAND); 
       n %= 1000;
-      if ((n > 0) && (n<100)) playTrack(1); // say "and"
+      if ((n > 0) && (n<100)) playTrack(mp3_AND); 
     }
     if (n>=100) {
       int hundreds = n / 100;
       sayNumber(hundreds);
-      playTrack(11); // say "hundred"
+      playTrack(mp3_HUNDRED); 
       n %= 100;
-      if (n > 0) playTrack(1); // say "and"
+      if (n > 0) playTrack(mp3_AND); 
     }
     if (n>19) {
       int tens = n / 10;
       switch (tens) {
-        case 2: playTrack(33); playTrack(24); break; // say "twen", then "t"
-        case 3: playTrack(29); playTrack(24); break; // say "thir", then "t"
-        case 4: playTrack(9); playTrack(24); break; // say "four", then "t"
-        case 5: playTrack(7); playTrack(24); break; // say "fif", then "t"
-        case 6: playTrack(23); playTrack(24); break; // say "six", then "t"
-        case 7: playTrack(22); playTrack(24); break; // say "seven", then "t"
-        case 8: playTrack(5); playTrack(24); break; // say "eight", then "t"
-        case 9: playTrack(14); playTrack(24); break; // say "nine", then "t"
+        case 2: playTrack(mp3_TWEN); playTrack(mp3_T); break; 
+        case 3: playTrack(mp3_THIR); playTrack(mp3_T); break; 
+        case 4: playTrack(mp3_FOUR); playTrack(mp3_T); break; 
+        case 5: playTrack(mp3_FIF); playTrack(mp3_T); break; 
+        case 6: playTrack(mp3_SIX); playTrack(mp3_T); break; 
+        case 7: playTrack(mp3_SEVEN); playTrack(mp3_T); break; 
+        case 8: playTrack(mp3_EIGHT); playTrack(mp3_T); break; 
+        case 9: playTrack(mp3_NINE); playTrack(mp3_T); break; 
       }
       n %= 10;
     }
     switch(n) {
-      case 1: playTrack(16); break; // say "one"
-      case 2: playTrack(34); break; // say "two"
-      case 3: playTrack(31); break; // say "three"
-      case 4: playTrack(9); break; // say "four"
-      case 5: playTrack(8); break; // say "five"
-      case 6: playTrack(23); break; // say "six"
-      case 7: playTrack(22); break; // say "seven"
-      case 8: playTrack(5); break; // say "eight"
-      case 9: playTrack(14); break; // say "nine"
-      case 10: playTrack(28); break; // say "ten"
-      case 11: playTrack(6); break; // say "eleven"
-      case 12: playTrack(32); break; // say "twelve"
-      case 13: playTrack(29); playTrack(27); break; // say "thir", then "teen"
-      case 14: playTrack(9); playTrack(27); break; // say "four", then "teen"
-      case 15: playTrack(8); playTrack(27); break; // say "fif", then "teen"
-      case 16: playTrack(23); playTrack(27); break; // say "six", then "teen"
-      case 17: playTrack(22); playTrack(27); break; // say "seven", then "teen"
-      case 18: playTrack(5); playTrack(27); break; // say "eight", then "teen"
-      case 19: playTrack(14); playTrack(27); break; // say "nine", then "teen"
+      case 1: playTrack(mp3_ONE); break; 
+      case 2: playTrack(mp3_TWO); break; 
+      case 3: playTrack(mp3_THREE); break;
+      case 4: playTrack(mp3_FOUR); break; 
+      case 5: playTrack(mp3_FIVE); break; 
+      case 6: playTrack(mp3_SIX); break; 
+      case 7: playTrack(mp3_SEVEN); break;
+      case 8: playTrack(mp3_EIGHT); break;
+      case 9: playTrack(mp3_NINE); break; 
+      case 10: playTrack(mp3_TEN); break; 
+      case 11: playTrack(mp3_ELEVEN); break; 
+      case 12: playTrack(mp3_TWELVE); break; 
+      case 13: playTrack(mp3_THIR); playTrack(mp3_TEEN); break; 
+      case 14: playTrack(mp3_FOUR); playTrack(mp3_TEEN); break; 
+      case 15: playTrack(mp3_FIF); playTrack(mp3_TEEN); break; 
+      case 16: playTrack(mp3_SIX); playTrack(mp3_TEEN); break; 
+      case 17: playTrack(mp3_SEVEN); playTrack(mp3_TEEN); break;
+      case 18: playTrack(mp3_EIGHT); playTrack(mp3_TEEN); break;
+      case 19: playTrack(mp3_NINE); playTrack(mp3_TEEN); break; 
     }
   }
   return;
@@ -288,113 +297,86 @@ void sayNumber(int n) {
 
 
 // ========= setTarget function ========= 
-void setTarget() {
-  readoutCurrentTarget();
-  
-  // ========= keep checking if keypad was pressed ========= 
-  keyPressed = keypad.getKey();
-  while (!keyPressed) {
-    keyPressed = keypad.getKey();
-  }  
-  input(keyPressed);
-
-  // reset the keyPressed
-  keyPressed = NULL;
-}
-
-
-// ========= readoutTarget function ========= 
-void readoutCurrentTarget() {
-  if (currentTarget == -1) {
-    Serial.println("no current target");
-    playTrack(15); playTrack(4); playTrack(26); // say "no", then "current", then "target"
-  } else {
-    Serial.println("current target... " + String(currentTarget));
-    playTrack(4); playTrack(26); // say "current", then "target"
-    sayNumber((int)currentTarget);
-  }
-}
-
-
-// ========= readoutTarget function ========= 
-// reads out the target volume that is being keyed in right now 
-// trigger with valid keypad input 
-void readoutTarget(int target) {
-  if (target == -1) {
-    Serial.println("No target set");
-    playTrack(15); playTrack(26); playTrack(35); // say "no", then "target", then "weight"
-  }
-  else {
-    Serial.println("Reading out target... " + String(target));
-    playTrack(13); playTrack(26); playTrack(35); // say "new", then "target", then "weight"
-    sayNumber((int)target);
-  }
-}
-
-
-// ========= input function ========= 
-// input function for the targetWeight
-void input(char keyPressed) {
-  Serial.print("keyPressed: ");
-  Serial.println(keyPressed);
-  int target = 0; // assign temporary target
-
-  // very first key must be a digit, else exit setTarget mode
+void target(char keyPressed) {
   if (keyPressed == '#') {
-    // simply exit the setTarget mode with no change
-    Serial.println("no new target");
-    playTrack(15); playTrack(13); playTrack(26); // say "no", then "new", then "target"
-    return;
+    // # key will read out the current target that has been set if there is one, else state that there isn't one
+    if (currentTarget == -1) {
+      Serial.println("\ntarget() - # pressed, no current target has been set\n");
+      playTrack(mp3_NO); playTrack(mp3_CURRENT); playTrack(mp3_TARGET); 
+    } else {
+      Serial.println("\ntarget() - # pressed, current target is: " + String(currentTarget) + "\n");
+      playTrack(mp3_CURRENT); playTrack(mp3_TARGET); 
+      sayNumber(currentTarget);
+    }
   } else if (keyPressed == '*') {
-    // delete the currentTarget and exit setTarget mode
-    Serial.println("setting zero target");
+    // # key will read delete the current target if one has been set, or state that there isn't one
+    Serial.println("\ntarget() - * pressed, target has been cleared\n");
     currentTarget = -1; 
-    playTrack(21); playTrack(36); playTrack(26); // say "setting", then "zero", then "target"
-    return;
+    playTrack(mp3_SETTING); playTrack(mp3_ZERO); playTrack(mp3_TARGET); 
   } else {
-    target = target * 10 + String(keyPressed).toInt();
-    readoutTarget(target);
-  }
+    // digit key will start the target setting process
+    Serial.println("\ntarget() - digit pressed, now setting a target\n");
+    setTarget(keyPressed);
+  }  
+}
 
+
+// ========= setTarget function ========= 
+// setTarget function for the target value that will trigger buzzing 
+void setTarget(char keyPressed) {
+  int tempTarget = String(keyPressed).toInt(); // assign temporary target to the first digit that was pressed
+  Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
+  playTrack(mp3_NEW); playTrack(mp3_TARGET); 
+  sayNumber(tempTarget);
 
   // loop and keep reading new input until new target is confirmed
-  char key = keyPressed;
-
   while (1) {
-    key = keypad.getKey();
+    keyPressed = keypad.getKey();
 
-    if (key) {
-      // terminating condition: # key will be our terminating character and will confirm our targetWeight 
-      if (key == '#') {
+    if (keyPressed) {
+      Serial.println("setTarget() - keyPressed: " + String(keyPressed));
+      // terminating condition: # key will be our terminating character and will set the currentTarget to the confirmed target 
+      if (keyPressed == '#') {
+        currentTarget = tempTarget;   
+        Serial.println("setTarget() - exiting input with new target confirmed");
+        playTrack(mp3_SETTING); playTrack(mp3_TARGET); 
+        sayNumber(tempTarget);     
         break;
       }
   
-      // backspace condition: * key will be our backspace character
-      else if (key == '*') {
-        target /= 10;
-        readoutTarget(target);
+      // backspace condition: * key will be our backspace character, and if we backspace a single digit, then we exit the mode with no changes to the currentTarget
+      else if (keyPressed == '*') {
+        tempTarget /= 10;
+        if (tempTarget == 0) {
+          Serial.println("setTarget() - exiting input with no change to target");
+          playTrack(mp3_NO); playTrack(mp3_NEW); playTrack(mp3_TARGET);
+          break;
+        } else {
+          Serial.println("setTarget() - backspace, new tempTarget: " + String(tempTarget));
+          playTrack(mp3_NEW); playTrack(mp3_TARGET);
+          sayNumber(tempTarget);
+        }
       }
     
       // digits will add into our input
       else {
-        if (target < 1000) {
-          target = target * 10 + String(key).toInt();
-          readoutTarget(target);
+        if (tempTarget < 1000) {
+          tempTarget = tempTarget * 10 + String(keyPressed).toInt();
+          Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
+          playTrack(mp3_NEW); playTrack(mp3_TARGET); 
+          sayNumber(tempTarget);
+        } else {
+          Serial.println("\nsetTarget() - exceeded maximum target allowable: only up to 4 digits\n");
+          playTrack(mp3_EXCEEDED_MAXIMUM_ALLOWABLE_INPUT);
         }
       }
     }
   }
-
-  // set the currentTarget to the confirmed target 
-  currentTarget = target;
-  playTrack(21); // say "setting"
-  readoutCurrentTarget();
-  return;
 }
 
 
 // ========= buzz function ========= 
-// controls the buzzing tones for volume indications (close, overshot, hit)
+// controls the buzzing tones for target indications (close, overshot, hit)
 // 1 - normal. 2 - close (approaching targetWeight). 3 - overshot (went over targetWeight). 4 - hit (on targetWeight).
 void buzz() {
   float difference = currentTarget - currentReading;
@@ -405,28 +387,28 @@ void buzz() {
   } 
   // approaching mode, fast beep
   else if (difference >= 15 and difference < 50) {
+    Serial.println("\nbuzz() - approaching target\n");
     tone(buzzPin, 311); //D#
     delay(200);
     noTone(buzzPin);
     delay(100);
   } 
-  // hit mode, target volume reached, flatline
+  // hit mode, target reading reached, flatline
   else if (difference >= -15 and difference < 15) {
+    Serial.println("\nbuzz() - reached target\n");
     tone(buzzPin, 440); //A
-    delay(2000);
+    delay(1000);
     noTone(buzzPin);
     delay(500);
   } 
   // overshot mode, offbeat
   else if (difference < -15) {
+    Serial.println("\nbuzz() - overshot target\n");
+    playTrack(mp3_OVERSHOT);
     tone(buzzPin, 440); //F#
     delay(50);
     tone(buzzPin, 350); //F#
     delay(50);
-    tone(buzzPin, 440); //F#
-    delay(50);
-    tone(buzzPin, 350); //F#
-    delay(50);    
     noTone(buzzPin);
     delay(500);
   }

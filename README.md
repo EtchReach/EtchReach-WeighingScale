@@ -21,13 +21,13 @@ Firmware for talking weighing scale
 
 This project interfaces with the DFPlayer Mini mp3 module that accepts an SD card containing .mp3 or .wav audio files _ONLY_.
 
-This repository comes with some default vocabulary in the folder `audio_files_source`. However, you must populate your SD card with the vocabulary by running `audio_files_renaming.py` because of a _TON OF LIMITATIONS_ of the DFPlayer Mini module. Simply copy-pasting mp3 files into the SD card will not work. If you wish to create your own vocabulary or replace the default audio files, feel free to do so in the audio file source folder
+This repository comes with some default vocabulary in the folder `audio_files_source`. However, you must populate your SD card with the vocabulary by running `speakaudio_files_generation.py` because of a _TON OF LIMITATIONS_ of the DFPlayer Mini module. Simply copy-pasting mp3 files into the SD card will not work. If you wish to create your own vocabulary or replace the default audio files, feel free to do so in the audio file source folder
 
 1. Your source audio files in the `audio_files_source` folder can only be of formats in ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'wma']
 2. Your source audio filename must be underscore-separated containing the spoken words. For example if your audio file says "hello world", the filename should be "HELLO_WORLD.<audio file extension>"
-3. Run `audio_files_renaming.py` and follow the command prompt instructions to generate your vocabulary files to be stored in your SD card. If you do not use a SD card, the output will be to the folder `audio_files_target` for your debugging and verification
-4. You can keep adding new audio files into `audio_files_source` folder and if you run `audio_files_renaming.py` and follow its instructions, there will be no problems with expanding the vocabulary present in the SD card
-5. _DO NOT MANUALLY INSERT OR DELETE_ any files from your SD card at all. If you delete or insert anything, then the entire vocabulary will be rendered useless. Delete all the files from the SD card and rerun `audio_files_renaming.py` to refresh the entire vocabulary and your vocabulary variables in your Arduino code must be replaced because the numbering will be wrong
+3. Run `speakaudio_files_generation.py` and follow the command prompt instructions to generate your vocabulary files to be stored in your SD card. If you do not use a SD card, the output will be to the folder `audio_files_target` for your debugging and verification
+4. You can keep adding new audio files into `audio_files_source` folder and if you run `speakaudio_files_generation.py` and follow its instructions, there will be no problems with expanding the vocabulary present in the SD card
+5. _DO NOT MANUALLY INSERT OR DELETE_ any files from your SD card at all. If you delete or insert anything, then the entire vocabulary will be rendered useless. Delete all the files from the SD card and rerun `speakaudio_files_generation.py` to refresh the entire vocabulary and your vocabulary variables in your Arduino code must be replaced because the numbering will be wrong
 
 ## DFPlayer Mini
 
@@ -44,8 +44,8 @@ DFPlayer Mini comes with its limitations. We have experimented and found the fol
     - e.g. 0001_HELLO will be ok.
   - The file format must be .mp3 or .wav only
 
-- Running `audio_files_renaming.py` will copy audio files present in the source folder {source_folder}, apply a 4-digit number to it and save it in the root folder such that it meets all the criterias above
+- Running `speakaudio_files_generation.py` will copy audio files present in the source folder {source_folder}, apply a 4-digit number to it and save it in the root folder such that it meets all the criterias above
 
 - If you ever need to remove an audio file, do note that it WILL BREAK ALL of your Arduino code since the time order will be messed up. Therefore do your best and plan accordingly. Do not remove, only add.
 
-- After running `audio_files_renaming.py`, you can call on the audio files using the filenames. Refer to our code for a demonstration
+- After running `speakaudio_files_generation.py`, you can call on the audio files using the filenames. Refer to our code for a demonstration
