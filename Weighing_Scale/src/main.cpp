@@ -123,7 +123,7 @@ void setup() {
 
 
   // ========= program init =========
-  playTrack(mp3_WEIGHING_SCALE_IS_TURNING_ON);
+  playTrack(wav_WEIGHING_SCALE_IS_TURNING_ON);
   tare(); // reset the scale to 0  
 }
 
@@ -131,7 +131,7 @@ void setup() {
 void loop() {
   // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
   currentReading = measure(); // take the current reading from the sensor
-  showReading(); // show the reading on the display
+  displayNumber(currentReading); // show the reading on the display
   
   // ========= keep checking if tare button was pressed ========= 
   tareState = digitalRead(tarePin);
@@ -197,19 +197,19 @@ int measure(){
 
 // ======== display function =========
 // shows the current reading on the 
-void showReading() {
+void displayNumber(int n) {
   uint8_t data[] = { 0x0, 0x0, 0x0, 0x0 };
   display.setSegments(data);
-  display.showNumberDec(currentReading, false, 4, 0);
+  display.showNumberDec(n, false, 4, 0);
 }
 
 
 // ======== tare function =========
 void tare() {
   Serial.println("\ntare() - start taring");
-  playTrack(mp3_CALIBRATING_SCALE); 
+  playTrack(wav_CALIBRATING_SCALE); 
   scale.tare(); // taring
-  playTrack(mp3_READY); 
+  playTrack(wav_READY); 
   Serial.println("tare() - finish taring\n");
 }
 
@@ -220,12 +220,12 @@ void tare() {
 void readout() {  
   // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
   currentReading = measure(); // take the current reading from the sensor
-  showReading(); // show the reading on the display
+  displayNumber(currentReading); // show the reading on the display
 
 
   Serial.println("\nreadout() - current reading: " + String(currentReading) + "\n");
   sayNumber((int)currentReading);
-  playTrack(mp3_GRAMS);
+  playTrack(wav_GRAMS);
 }
 
 
@@ -233,59 +233,59 @@ void readout() {
 // Say any number between -999,999 and 999,999 
 void sayNumber(int n) {
   if (n<0) {
-    playTrack(mp3_NEGATIVE); 
+    playTrack(wav_NEGATIVE); 
     sayNumber(-n);
   } else if (n==0) {
-    playTrack(mp3_ZERO); 
+    playTrack(wav_ZERO); 
   } else {
     if (n>=1000) {
       int thousands = n / 1000;
       sayNumber(thousands);
-      playTrack(mp3_THOUSAND); 
+      playTrack(wav_THOUSAND); 
       n %= 1000;
-      if ((n > 0) && (n<100)) playTrack(mp3_AND); 
+      if ((n > 0) && (n<100)) playTrack(wav_AND); 
     }
     if (n>=100) {
       int hundreds = n / 100;
       sayNumber(hundreds);
-      playTrack(mp3_HUNDRED); 
+      playTrack(wav_HUNDRED); 
       n %= 100;
-      if (n > 0) playTrack(mp3_AND); 
+      if (n > 0) playTrack(wav_AND); 
     }
     if (n>19) {
       int tens = n / 10;
       switch (tens) {
-        case 2: playTrack(mp3_TWENTY); break; 
-        case 3: playTrack(mp3_THIRTY); break; 
-        case 4: playTrack(mp3_FOURTY); break; 
-        case 5: playTrack(mp3_FIFTY); break; 
-        case 6: playTrack(mp3_SIXTY); break; 
-        case 7: playTrack(mp3_SEVENTY); break; 
-        case 8: playTrack(mp3_EIGHTY); break; 
-        case 9: playTrack(mp3_NINETY); break; 
+        case 2: playTrack(wav_TWENTY); break; 
+        case 3: playTrack(wav_THIRTY); break; 
+        case 4: playTrack(wav_FOURTY); break; 
+        case 5: playTrack(wav_FIFTY); break; 
+        case 6: playTrack(wav_SIXTY); break; 
+        case 7: playTrack(wav_SEVENTY); break; 
+        case 8: playTrack(wav_EIGHTY); break; 
+        case 9: playTrack(wav_NINETY); break; 
       }
       n %= 10;
     }
     switch(n) {
-      case 1: playTrack(mp3_ONE); break; 
-      case 2: playTrack(mp3_TWO); break; 
-      case 3: playTrack(mp3_THREE); break;
-      case 4: playTrack(mp3_FOUR); break; 
-      case 5: playTrack(mp3_FIVE); break; 
-      case 6: playTrack(mp3_SIX); break; 
-      case 7: playTrack(mp3_SEVEN); break;
-      case 8: playTrack(mp3_EIGHT); break;
-      case 9: playTrack(mp3_NINE); break; 
-      case 10: playTrack(mp3_TEN); break; 
-      case 11: playTrack(mp3_ELEVEN); break; 
-      case 12: playTrack(mp3_TWELVE); break; 
-      case 13: playTrack(mp3_THIRTEEN); break; 
-      case 14: playTrack(mp3_FOURTEEN); break; 
-      case 15: playTrack(mp3_FIFTEEN); break; 
-      case 16: playTrack(mp3_SIXTEEN); break; 
-      case 17: playTrack(mp3_SEVENTEEN); break;
-      case 18: playTrack(mp3_EIGHTEEN); break;
-      case 19: playTrack(mp3_NINETEEN); break; 
+      case 1: playTrack(wav_ONE); break; 
+      case 2: playTrack(wav_TWO); break; 
+      case 3: playTrack(wav_THREE); break;
+      case 4: playTrack(wav_FOUR); break; 
+      case 5: playTrack(wav_FIVE); break; 
+      case 6: playTrack(wav_SIX); break; 
+      case 7: playTrack(wav_SEVEN); break;
+      case 8: playTrack(wav_EIGHT); break;
+      case 9: playTrack(wav_NINE); break; 
+      case 10: playTrack(wav_TEN); break; 
+      case 11: playTrack(wav_ELEVEN); break; 
+      case 12: playTrack(wav_TWELVE); break; 
+      case 13: playTrack(wav_THIRTEEN); break; 
+      case 14: playTrack(wav_FOURTEEN); break; 
+      case 15: playTrack(wav_FIFTEEN); break; 
+      case 16: playTrack(wav_SIXTEEN); break; 
+      case 17: playTrack(wav_SEVENTEEN); break;
+      case 18: playTrack(wav_EIGHTEEN); break;
+      case 19: playTrack(wav_NINETEEN); break; 
     }
   }
   return;
@@ -298,21 +298,21 @@ void target(char keyPressed) {
     // # key will read out the current target that has been set if there is one, else state that there isn't one
     if (currentTarget == -1) {
       Serial.println("\ntarget() - # pressed, no current target has been set\n");
-      playTrack(mp3_NO_TARGET_HAS_BEEN_SET);
+      playTrack(wav_NO_TARGET_HAS_BEEN_SET);
     } else {
       Serial.println("\ntarget() - # pressed, current target is: " + String(currentTarget) + "\n");
-      playTrack(mp3_CURRENT_TARGET_SET_IS);
+      playTrack(wav_CURRENT_TARGET_SET_IS);
       sayNumber(currentTarget);
     }
   } else if (keyPressed == '*') {
     // # key will read delete the current target if one has been set, or state that there isn't one
     Serial.println("\ntarget() - * pressed, target has been cleared\n");
     currentTarget = -1;
-    playTrack(mp3_CURRENT_TARGET_REMOVED);
+    playTrack(wav_CURRENT_TARGET_REMOVED);
   } else {
     // digit key will start the target setting process
     Serial.println("\ntarget() - digit pressed, now setting a target\n");
-    playTrack(mp3_SETTING_TARGET);
+    playTrack(wav_SETTING_TARGET);
     setTarget(keyPressed);
   }  
 }
@@ -323,7 +323,10 @@ void target(char keyPressed) {
 void setTarget(char keyPressed) {
   int tempTarget = String(keyPressed).toInt(); // assign temporary target to the first digit that was pressed
   Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
-  playTrack(mp3_INPUT_TARGET);
+  playTrack(wav_INPUT_TARGET);
+  
+  // switch the display and voice to show the target being keyed in instead
+  displayNumber(tempTarget);
   sayNumber(tempTarget);
 
   // loop and keep reading new input until new target is confirmed
@@ -336,7 +339,7 @@ void setTarget(char keyPressed) {
       if (keyPressed == '#') {
         currentTarget = tempTarget;   
         Serial.println("setTarget() - exiting input with new target confirmed");
-        playTrack(mp3_NEW_TARGET_CONFIRMED);
+        playTrack(wav_NEW_TARGET_CONFIRMED);
         sayNumber(tempTarget);     
         break;
       }
@@ -346,12 +349,15 @@ void setTarget(char keyPressed) {
         tempTarget /= 10;
         if (tempTarget == 0) {
           Serial.println("setTarget() - exiting input with no change to target");
-          playTrack(mp3_CANCELLING_INPUT);
-          playTrack(mp3_TARGET_UNCHANGED);
+          playTrack(wav_CANCELLING_INPUT);
+          playTrack(wav_TARGET_UNCHANGED);
           break;
         } else {
           Serial.println("setTarget() - backspace, new tempTarget: " + String(tempTarget));
-          playTrack(mp3_INPUT_TARGET);
+          playTrack(wav_INPUT_TARGET);
+
+          // switch the display show the target currently being keyed in
+          displayNumber(tempTarget);              
           sayNumber(tempTarget);
         }
       }
@@ -361,11 +367,14 @@ void setTarget(char keyPressed) {
         if (tempTarget < 1000) {
           tempTarget = tempTarget * 10 + String(keyPressed).toInt();
           Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
-          playTrack(mp3_INPUT_TARGET);
+          playTrack(wav_INPUT_TARGET);
+
+          // switch the display show the target currently being keyed in
+          displayNumber(tempTarget);              
           sayNumber(tempTarget);
         } else {
           Serial.println("\nsetTarget() - exceeded maximum target allowable: only up to 4 digits\n");
-          playTrack(mp3_EXCEEDED_MAXIMUM_ALLOWABLE_INPUT);
+          playTrack(wav_EXCEEDED_MAXIMUM_ALLOWABLE_INPUT);
         }
       }
     }
@@ -379,7 +388,7 @@ void setTarget(char keyPressed) {
 void buzz() {
   // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
   currentReading = measure(); // take the current reading from the sensor
-  showReading(); // show the reading on the display
+  displayNumber(currentReading); // show the reading on the display
 
 
   float difference = currentTarget - currentReading;
@@ -399,7 +408,7 @@ void buzz() {
   // hit mode, target reading reached, flatline
   else if (difference >= -15 and difference < 15) {
     Serial.println("\nbuzz() - reached target\n");
-    playTrack(mp3_TARGET_REACHED);
+    playTrack(wav_TARGET_REACHED);
     tone(buzzPin, 440); // A
     delay(1000);
     noTone(buzzPin);
@@ -408,7 +417,7 @@ void buzz() {
   // overshot mode, offbeat
   else if (difference < -15) {
     Serial.println("\nbuzz() - overshot target\n");
-    playTrack(mp3_OVERSHOT_TARGET);
+    playTrack(wav_OVERSHOT_TARGET);
     tone(buzzPin, 440); // F#
     delay(50);
     tone(buzzPin, 350); // F#
