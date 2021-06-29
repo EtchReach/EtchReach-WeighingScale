@@ -13,8 +13,6 @@ voices = engine.getProperty('voices') # getting details of current voice
 engine.setProperty('voice', voices[1].id) # 1 is female voice
 volume = engine.getProperty('volume') # getting to know current volume level (min=0 and max=1)
 engine.setProperty('volume',1.0) # setting up volume level between 0 and 1
-# rate = engine.getProperty('rate') # getting details of current speaking rate
-# engine.setProperty('rate', rate*0.75) # setting up new voice rate
 
 
 
@@ -221,39 +219,7 @@ parser.add_argument('-r', '--rebuild', default=False, action='store_true', help=
 args = vars(parser.parse_args())
 
 
-
-# print notice about program
-proceed = input(f"""
-============================== NOTICE - MUST READ ==============================
-The DFPlayer Mini for Arduino requires audio files to be uploaded into a SD card. 
-Further, it requires the following conditions to be met for these audio files:
-\t 1. The audio file filename must begin with a 4-digit number in the range 0001-9999.
-\t 2. The audio file's 4-digit number in the name must correspond to the sequence by which the file was written into the SD card.
-\t\t e.g. 0001 is the very first file uploaded, and given 0001, 0002, 0003, the file with 0002 in the name must not be uploaded later than 0003.
-\t 3. There must be at least a 1-second difference between the time the file is created in the SD card
-\t\t e.g. In hh:mm:ss:ms format, if file 0001 was created at 11:22:33:400 and file 0002 was created at 11:22:33:900 then the SD card will still fail.
-\t 4. The filenames can contain other characters, as long as it satisfies condition 1.
-\t\t e.g. 0001_HELLO will be ok.
-\t 5. The file format must be .mp3 or .wav only (we will use .wav)
-\t 6. The SD card must be formatted as FAT32
-
-Running this code will generate audio files for the vocabulary items in VOCABULARY.txt, apply a 4-digit number to it 
-and save it in the target folder such that it meets all the criterias above 
-
-If you ever need to remove an audio file, do note that it WILL BREAK ALL of your Arduino code since the time order will be messed up.
-Therefore do your best and plan accordingly. Do not remove manually, only add or rerun this code with an rebuild flag of -o
-
-Have you read the notice? 
-Type 'yes' or 'y' if you have. 
-Your input here:::::::::::::::::::::: """ )
-
-# Check if user read the notice
-if proceed not in ["yes", "y"]:
-    print("You decided not to proceed. Exiting...")
-else:
-    print("You have acknowledge the notice. Proceeding...")
-    
-    # call main function
-    tts_audio_generation(args)
+# call main function
+tts_audio_generation(args)
 
 
