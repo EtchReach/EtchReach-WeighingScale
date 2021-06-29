@@ -1,38 +1,60 @@
-and
-calibrating
-complete
-current
-eight
-eleven
-exceeded maximum allowable input
-fif
-five
-four
-grams
-hundred
-negative
-new
-nine
-no
-one
-overshot
-power down
-power up
-reading
+# setup()
+weighing scale is turning on
+
+# tare()
+calibrating scale
 ready
-setting
-seven
-six
-t
-tare
-target
-teen
-ten
-thir
-thousand
-three
-twelve
-twen
-two
-weight
+
+# readout()
+grams
+
+# sayNumber() 
+negative
 zero
+thousand
+and
+hundred
+twenty
+thirty
+fourty
+fifty
+sixty
+seventy
+eighty
+ninety
+one
+two
+three
+four
+five
+six
+seven
+eight
+nine
+ten
+eleven
+twelve
+thirteen
+fourteen
+fifteen
+sixteen
+seventeen
+eighteen
+nineteen
+
+# target()
+no target has been set
+current target set is
+current target removed
+setting target
+
+# setTarget()
+input target
+new target confirmed
+cancelling input
+target unchanged
+exceeded maximum allowable input
+
+# buzz()
+target reached
+overshot target

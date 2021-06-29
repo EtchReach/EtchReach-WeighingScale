@@ -6,6 +6,7 @@
 
 
 // ========= Vocabulary =========
+// this library is obtained from running the tts_audio_generation.py script in the TTS_AUDIO folder
 #include "TTS_AUDIO.h"
 
 
@@ -54,7 +55,8 @@ int readoutState; // tracking HIGH-LOW state of readoutPin
 
 
 // ========= Piezzobuzzer configurations =========
-const int buzzPin = 7; // D7 pin (positive leg)
+// const int buzzPin = 7; // D7 pin (positive leg)
+const int buzzPin = 11; // D11 pin (positive leg)
 
 
 // ========= HX711 Load Cell configurations =========
@@ -80,19 +82,18 @@ float currentReading; // the currently measured weight
 void setup() {
   // ========= Commmunication with computer ========= 
   Serial.begin(115200); // starts the serial communication
-  Serial.println("Weighing scale starting up");  
-  
+  Serial.println("Weighing scale starting up");
+
 
   // ========= DFPlayer mini mp3 module and speaker init =========
   softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
-    player.volume(15); // set volume (0 to 30).
+    player.volume(30); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
-  }  
-  playTrack(mp3_POWER_UP); 
+  }
 
 
   // ========= 4x3 keypad init ========= 
@@ -122,14 +123,16 @@ void setup() {
 
 
   // ========= program init =========
+  playTrack(mp3_WEIGHING_SCALE_IS_TURNING_ON);
   tare(); // reset the scale to 0  
 }
 
 
 void loop() {
-  // ========= keep checking latest reading ========= 
+  // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
   currentReading = measure(); // take the current reading from the sensor
-
+  showReading();
+  
 
   // ========= keep checking if tare button was pressed ========= 
   tareState = digitalRead(tarePin);
@@ -158,12 +161,6 @@ void loop() {
   if (currentTarget != -1) {
     buzz();
   }
-
-
-  // ========= keep updating the tm1637 lcd panel ========= 
-  uint8_t data[] = { 0x0, 0x0, 0x0, 0x0 };
-  display.setSegments(data);
-  display.showNumberDec(currentReading, false, 4, 0);
   
   
   // ========= time delay before next loop =========   
@@ -187,7 +184,7 @@ void playTrack(int trackToPlay) {
   // if player.readState() == 513 then player is playing. if player.readState() == 512 then player has stopped
   while (player.readState() == 513) {
     Serial.println("playTrack() - player busy"); 
-    delay(100);
+    delay(150);
   }
 
   Serial.println("playTrack() - playing now: " + String(trackToPlay)); 
@@ -196,12 +193,12 @@ void playTrack(int trackToPlay) {
 
   while (player.readState() == 513) {
     Serial.println("playTrack() - player busy");
-    delay(100);
+    delay(150);
   }  
 
   Serial.print("\nplayTrack() - finished playing\n");
 }
-  
+
   
 // ======== measure function =========
 // uses the load cell to take a measurement
@@ -212,12 +209,20 @@ int measure(){
 }
 
 
+// ======== display function =========
+// shows the current reading on the 
+void showReading() {
+  uint8_t data[] = { 0x0, 0x0, 0x0, 0x0 };
+  display.setSegments(data);
+  display.showNumberDec(currentReading, false, 4, 0);
+}
+
+
 // ======== tare function =========
 void tare() {
   Serial.println("\ntare() - start taring");
-  playTrack(mp3_CALIBRATING); 
+  playTrack(mp3_CALIBRATING_SCALE); 
   scale.tare(); // taring
-  playTrack(mp3_WEIGHT); playTrack(mp3_ZERO); 
   playTrack(mp3_READY); 
   Serial.println("tare() - finish taring\n");
 }
@@ -226,10 +231,15 @@ void tare() {
 // ========= readout function ========= 
 // performs and interrupt and reads out the current reading at that point in time, once
 // BLUE BUTTON
-void readout() {
+void readout() {  
+  // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
+  currentReading = measure(); // take the current reading from the sensor
+  showReading();
+
+
   Serial.println("\nreadout() - current reading: " + String(currentReading) + "\n");
-  playTrack(mp3_CURRENT); playTrack(mp3_READING); 
   sayNumber((int)currentReading);
+  playTrack(mp3_GRAMS);
 }
 
 
@@ -259,14 +269,14 @@ void sayNumber(int n) {
     if (n>19) {
       int tens = n / 10;
       switch (tens) {
-        case 2: playTrack(mp3_TWEN); playTrack(mp3_T); break; 
-        case 3: playTrack(mp3_THIR); playTrack(mp3_T); break; 
-        case 4: playTrack(mp3_FOUR); playTrack(mp3_T); break; 
-        case 5: playTrack(mp3_FIF); playTrack(mp3_T); break; 
-        case 6: playTrack(mp3_SIX); playTrack(mp3_T); break; 
-        case 7: playTrack(mp3_SEVEN); playTrack(mp3_T); break; 
-        case 8: playTrack(mp3_EIGHT); playTrack(mp3_T); break; 
-        case 9: playTrack(mp3_NINE); playTrack(mp3_T); break; 
+        case 2: playTrack(mp3_TWENTY); break; 
+        case 3: playTrack(mp3_THIRTY); break; 
+        case 4: playTrack(mp3_FOURTY); break; 
+        case 5: playTrack(mp3_FIFTY); break; 
+        case 6: playTrack(mp3_SIXTY); break; 
+        case 7: playTrack(mp3_SEVENTY); break; 
+        case 8: playTrack(mp3_EIGHTY); break; 
+        case 9: playTrack(mp3_NINETY); break; 
       }
       n %= 10;
     }
@@ -283,13 +293,13 @@ void sayNumber(int n) {
       case 10: playTrack(mp3_TEN); break; 
       case 11: playTrack(mp3_ELEVEN); break; 
       case 12: playTrack(mp3_TWELVE); break; 
-      case 13: playTrack(mp3_THIR); playTrack(mp3_TEEN); break; 
-      case 14: playTrack(mp3_FOUR); playTrack(mp3_TEEN); break; 
-      case 15: playTrack(mp3_FIF); playTrack(mp3_TEEN); break; 
-      case 16: playTrack(mp3_SIX); playTrack(mp3_TEEN); break; 
-      case 17: playTrack(mp3_SEVEN); playTrack(mp3_TEEN); break;
-      case 18: playTrack(mp3_EIGHT); playTrack(mp3_TEEN); break;
-      case 19: playTrack(mp3_NINE); playTrack(mp3_TEEN); break; 
+      case 13: playTrack(mp3_THIRTEEN); break; 
+      case 14: playTrack(mp3_FOURTEEN); break; 
+      case 15: playTrack(mp3_FIFTEEN); break; 
+      case 16: playTrack(mp3_SIXTEEN); break; 
+      case 17: playTrack(mp3_SEVENTEEN); break;
+      case 18: playTrack(mp3_EIGHTEEN); break;
+      case 19: playTrack(mp3_NINETEEN); break; 
     }
   }
   return;
@@ -302,20 +312,21 @@ void target(char keyPressed) {
     // # key will read out the current target that has been set if there is one, else state that there isn't one
     if (currentTarget == -1) {
       Serial.println("\ntarget() - # pressed, no current target has been set\n");
-      playTrack(mp3_NO); playTrack(mp3_CURRENT); playTrack(mp3_TARGET); 
+      playTrack(mp3_NO_TARGET_HAS_BEEN_SET);
     } else {
       Serial.println("\ntarget() - # pressed, current target is: " + String(currentTarget) + "\n");
-      playTrack(mp3_CURRENT); playTrack(mp3_TARGET); 
+      playTrack(mp3_CURRENT_TARGET_SET_IS);
       sayNumber(currentTarget);
     }
   } else if (keyPressed == '*') {
     // # key will read delete the current target if one has been set, or state that there isn't one
     Serial.println("\ntarget() - * pressed, target has been cleared\n");
-    currentTarget = -1; 
-    playTrack(mp3_SETTING); playTrack(mp3_ZERO); playTrack(mp3_TARGET); 
+    currentTarget = -1;
+    playTrack(mp3_CURRENT_TARGET_REMOVED);
   } else {
     // digit key will start the target setting process
     Serial.println("\ntarget() - digit pressed, now setting a target\n");
+    playTrack(mp3_SETTING_TARGET);
     setTarget(keyPressed);
   }  
 }
@@ -326,7 +337,7 @@ void target(char keyPressed) {
 void setTarget(char keyPressed) {
   int tempTarget = String(keyPressed).toInt(); // assign temporary target to the first digit that was pressed
   Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
-  playTrack(mp3_NEW); playTrack(mp3_TARGET); 
+  playTrack(mp3_INPUT_TARGET);
   sayNumber(tempTarget);
 
   // loop and keep reading new input until new target is confirmed
@@ -339,7 +350,7 @@ void setTarget(char keyPressed) {
       if (keyPressed == '#') {
         currentTarget = tempTarget;   
         Serial.println("setTarget() - exiting input with new target confirmed");
-        playTrack(mp3_SETTING); playTrack(mp3_TARGET); 
+        playTrack(mp3_NEW_TARGET_CONFIRMED);
         sayNumber(tempTarget);     
         break;
       }
@@ -349,11 +360,12 @@ void setTarget(char keyPressed) {
         tempTarget /= 10;
         if (tempTarget == 0) {
           Serial.println("setTarget() - exiting input with no change to target");
-          playTrack(mp3_NO); playTrack(mp3_NEW); playTrack(mp3_TARGET);
+          playTrack(mp3_CANCELLING_INPUT);
+          playTrack(mp3_TARGET_UNCHANGED);
           break;
         } else {
           Serial.println("setTarget() - backspace, new tempTarget: " + String(tempTarget));
-          playTrack(mp3_NEW); playTrack(mp3_TARGET);
+          playTrack(mp3_INPUT_TARGET);
           sayNumber(tempTarget);
         }
       }
@@ -363,7 +375,7 @@ void setTarget(char keyPressed) {
         if (tempTarget < 1000) {
           tempTarget = tempTarget * 10 + String(keyPressed).toInt();
           Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
-          playTrack(mp3_NEW); playTrack(mp3_TARGET); 
+          playTrack(mp3_INPUT_TARGET);
           sayNumber(tempTarget);
         } else {
           Serial.println("\nsetTarget() - exceeded maximum target allowable: only up to 4 digits\n");
@@ -379,6 +391,11 @@ void setTarget(char keyPressed) {
 // controls the buzzing tones for target indications (close, overshot, hit)
 // 1 - normal. 2 - close (approaching targetWeight). 3 - overshot (went over targetWeight). 4 - hit (on targetWeight).
 void buzz() {
+  // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
+  currentReading = measure(); // take the current reading from the sensor
+  showReading();
+
+
   float difference = currentTarget - currentReading;
 
   // normal mode, no sound
@@ -388,28 +405,29 @@ void buzz() {
   // approaching mode, fast beep
   else if (difference >= 15 and difference < 50) {
     Serial.println("\nbuzz() - approaching target\n");
-    tone(buzzPin, 311); //D#
+    tone(buzzPin, 311); // D#
     delay(200);
     noTone(buzzPin);
-    delay(100);
+    delay(800);
   } 
   // hit mode, target reading reached, flatline
   else if (difference >= -15 and difference < 15) {
     Serial.println("\nbuzz() - reached target\n");
-    tone(buzzPin, 440); //A
+    playTrack(mp3_TARGET_REACHED);
+    tone(buzzPin, 440); // A
     delay(1000);
     noTone(buzzPin);
-    delay(500);
+    delay(250);
   } 
   // overshot mode, offbeat
   else if (difference < -15) {
     Serial.println("\nbuzz() - overshot target\n");
-    playTrack(mp3_OVERSHOT);
-    tone(buzzPin, 440); //F#
+    playTrack(mp3_OVERSHOT_TARGET);
+    tone(buzzPin, 440); // F#
     delay(50);
-    tone(buzzPin, 350); //F#
+    tone(buzzPin, 350); // F#
     delay(50);
     noTone(buzzPin);
-    delay(500);
+    delay(200);
   }
 }

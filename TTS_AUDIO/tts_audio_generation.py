@@ -3,6 +3,7 @@ import os
 from tqdm import tqdm
 import time
 
+
 # set up text-to-speech
 import pyttsx3
 engine = pyttsx3.init()
@@ -12,6 +13,8 @@ volume = engine.getProperty('volume') # getting to know current volume level (mi
 engine.setProperty('volume',1.0) # setting up volume level between 0 and 1
 # rate = engine.getProperty('rate') # getting details of current speaking rate
 # engine.setProperty('rate', rate*0.75) # setting up new voice rate
+
+
 
 
 # main function 
@@ -98,6 +101,8 @@ def tts_audio_generation(args):
     # read in the full vocabulary from a text file
     vocabulary = open(vocabulary_file, "r").readlines()
     vocabulary = [vocabulary_item.rstrip('\n') for vocabulary_item in vocabulary]
+    vocabulary = [vocabulary_item for vocabulary_item in vocabulary if vocabulary_item != '']
+    vocabulary = [vocabulary_item for vocabulary_item in vocabulary if vocabulary_item[0] != '#']
 
     # create a uppercase version, with spaces replaced by underscores 
     source_vocab = [vocabulary_item.upper().replace(" ", "_") for vocabulary_item in vocabulary]
@@ -159,13 +164,19 @@ def tts_audio_generation(args):
 print("""
 get argument help: 
     python tts_audio_generation.py -h
-example of a minimally fully qualified command
+
+example - adding new vocabulary, local testing
     python tts_audio_generation.py -l C:\\Users\\user\\Documents\\Arduino\\libraries
-example of a maximally fully qualified command
-    python tts_audio_generation.py -l C:\\Users\\user\\Documents\\Arduino\\libraries -v vocabulary.txt -t audio_files -s -r
-example of using SD card and rebuilding
+example - rebuilding vocabulary, local testing
+    python tts_audio_generation.py -l C:\\Users\\user\\Documents\\Arduino\\libraries -r
+
+example - adding new vocabulary, using SD card (recommended)
+    python tts_audio_generation.py -l C:\\Users\\user\\Documents\\Arduino\\libraries -t D:\\ -s
+example - rebuilding vocabulary, using SD card 
     python tts_audio_generation.py -l C:\\Users\\user\\Documents\\Arduino\\libraries -t D:\\ -s -r
-    
+
+example - maximally fully qualified command
+    python tts_audio_generation.py -l C:\\Users\\user\\Documents\\Arduino\\libraries -v vocabulary.txt -t audio_files -s -r    
 """)
 
 parser = argparse.ArgumentParser(description='')
@@ -191,6 +202,7 @@ Further, it requires the following conditions to be met for these audio files:
 \t 4. The filenames can contain other characters, as long as it satisfies condition 1.
 \t\t e.g. 0001_HELLO will be ok.
 \t 5. The file format must be .mp3 or .wav only
+\t 6. The SD card must be formatted as FAT32
 
 Running this code will generate audio files for the vocabulary items in VOCABULARY.txt, apply a 4-digit number to it 
 and save it in the target folder such that it meets all the criterias above 
