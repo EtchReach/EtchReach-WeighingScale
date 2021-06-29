@@ -89,7 +89,7 @@ void setup() {
   softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
-    player.volume(30); // set volume (0 to 30).
+    player.volume(15); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
@@ -131,40 +131,26 @@ void setup() {
 void loop() {
   // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
   currentReading = measure(); // take the current reading from the sensor
-  showReading();
+  showReading(); // show the reading on the display
   
-
   // ========= keep checking if tare button was pressed ========= 
   tareState = digitalRead(tarePin);
-  if (tareState == HIGH) {
-    tare();
-  }
-
+  if (tareState == HIGH) tare();
 
   // ========= keep checking if readout button was pressed ========= 
   readoutState = digitalRead(readoutPin);
-  if (readoutState == HIGH) {
-    readout();
-  }  
-
+  if (readoutState == HIGH) readout();
 
   // ========= keep checking if the keypad was pressed ========= 
   keyPressed = keypad.getKey();
-  if (keyPressed) {
-    target(keyPressed);
-  }  
-
-
+  if (keyPressed) target(keyPressed);
 
   // ========= keep checking if there is a need to sound the buzzer ========= 
   // currentTarget == -1 means that we have no currentTarget set hence no need to bother with the buzzer 
-  if (currentTarget != -1) {
-    buzz();
-  }
+  if (currentTarget != -1) buzz();
   
-  
-  // ========= time delay before next loop =========   
-  delay(200);
+  // // ========= time delay before next loop =========   
+  // delay(100);
 }
 
 
@@ -234,7 +220,7 @@ void tare() {
 void readout() {  
   // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
   currentReading = measure(); // take the current reading from the sensor
-  showReading();
+  showReading(); // show the reading on the display
 
 
   Serial.println("\nreadout() - current reading: " + String(currentReading) + "\n");
@@ -393,7 +379,7 @@ void setTarget(char keyPressed) {
 void buzz() {
   // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
   currentReading = measure(); // take the current reading from the sensor
-  showReading();
+  showReading(); // show the reading on the display
 
 
   float difference = currentTarget - currentReading;
