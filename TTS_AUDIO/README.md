@@ -10,6 +10,8 @@ You can create vocabulary items by typing the words/phrases you want in vocabula
 6. You can leave blank lines, they will not count as vocabulary items too
 7. If you need numbers, try to type them out (this is untested)
 
+If you want to remove vocabulary, just try not to. Leave it in there, it doesn't hurt. You can move it to the bottom under a deprecated comment.
+
 # tts_audio_generation.py
 
 You must run this python script with a SD card if you want to use it with the DFPlayer Mini. You can run this script locally as well for testing purposes.
