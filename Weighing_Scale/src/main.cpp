@@ -266,6 +266,7 @@ void sayNumber(int n) {
       }
       n %= 10;
     }
+    delay(50);
     switch(n) {
       case 1: playTrack(wav_ONE); break; 
       case 2: playTrack(wav_TWO); break; 
