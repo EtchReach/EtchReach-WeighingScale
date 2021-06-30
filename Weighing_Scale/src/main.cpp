@@ -89,7 +89,7 @@ void setup() {
   softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
-    player.volume(15); // set volume (0 to 30).
+    player.volume(20); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
@@ -139,7 +139,7 @@ void loop() {
 
   // ========= keep checking if readout button was pressed ========= 
   readoutState = digitalRead(readoutPin);
-  if (readoutState == HIGH) readout();
+  if (readoutState == HIGH) readout(currentReading, 'c');
 
   // ========= keep checking if the keypad was pressed ========= 
   keyPressed = keypad.getKey();
@@ -148,9 +148,6 @@ void loop() {
   // ========= keep checking if there is a need to sound the buzzer ========= 
   // currentTarget == -1 means that we have no currentTarget set hence no need to bother with the buzzer 
   if (currentTarget != -1) buzz();
-  
-  // // ========= time delay before next loop =========   
-  // delay(100);
 }
 
 
@@ -166,11 +163,12 @@ void loop() {
 // uses the DFPlayer mini to play a track
 void playTrack(int trackToPlay) {
   Serial.println("\nplayTrack() - track to play: " + String(trackToPlay));
+  delay(50);
 
   // if player.readState() == 513 then player is playing. if player.readState() == 512 then player has stopped
   while (player.readState() == 513) {
     Serial.println("playTrack() - player busy"); 
-    delay(150);
+    delay(200);
   }
 
   Serial.println("playTrack() - playing now: " + String(trackToPlay)); 
@@ -179,10 +177,12 @@ void playTrack(int trackToPlay) {
 
   while (player.readState() == 513) {
     Serial.println("playTrack() - player busy");
-    delay(150);
+    delay(200);
   }  
 
   Serial.print("\nplayTrack() - finished playing\n");
+
+  delay(50);
 }
 
   
@@ -215,17 +215,17 @@ void tare() {
 
 
 // ========= readout function ========= 
-// performs and interrupt and reads out the current reading at that point in time, once
-// BLUE BUTTON
-void readout() {  
-  // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
-  currentReading = measure(); // take the current reading from the sensor
-  displayNumber(currentReading); // show the reading on the display
-
-
-  Serial.println("\nreadout() - current reading: " + String(currentReading) + "\n");
-  sayNumber((int)currentReading);
-  playTrack(wav_GRAMS);
+// will say the current value that is passed to it when the readout button is pressed
+// could be either the actual reading or a pending input, indicated by char c (this is not really necessary, just for a print statement switch)
+void readout(int n, char c) {  
+  // want to read out the current reading
+  if (c == 'r') {
+    Serial.println("\nreadout() - current reading: " + String(n) + "\n");
+  } else if (c =='i') {
+    Serial.println("\nreadout() - current target being typed: " + String(n) + "\n");
+  }
+  sayNumber((int)n);
+  playTrack(wav_GRAMS);    
 }
 
 
@@ -240,17 +240,37 @@ void sayNumber(int n) {
   } else {
     if (n>=1000) {
       int thousands = n / 1000;
-      sayNumber(thousands);
-      playTrack(wav_THOUSAND); 
+      switch(thousands) {
+        case 1: playTrack(wav_ONE_THOUSAND); break; 
+        case 2: playTrack(wav_TWO_THOUSAND); break; 
+        case 3: playTrack(wav_THREE_THOUSAND); break;
+        case 4: playTrack(wav_FOUR_THOUSAND); break; 
+        case 5: playTrack(wav_FIVE_THOUSAND); break; 
+        case 6: playTrack(wav_SIX_THOUSAND); break; 
+        case 7: playTrack(wav_SEVEN_THOUSAND); break;
+        case 8: playTrack(wav_EIGHT_THOUSAND); break;
+        case 9: playTrack(wav_NINE_THOUSAND); break; 
+      }
       n %= 1000;
-      if ((n > 0) && (n<100)) playTrack(wav_AND); 
+      delay(100);
+      // if ((n > 0) && (n<100)) playTrack(wav_AND); 
     }
     if (n>=100) {
       int hundreds = n / 100;
-      sayNumber(hundreds);
-      playTrack(wav_HUNDRED); 
+      switch(hundreds) {
+        case 1: playTrack(wav_ONE_HUNDRED); break; 
+        case 2: playTrack(wav_TWO_HUNDRED); break; 
+        case 3: playTrack(wav_THREE_HUNDRED); break;
+        case 4: playTrack(wav_FOUR_HUNDRED); break; 
+        case 5: playTrack(wav_FIVE_HUNDRED); break; 
+        case 6: playTrack(wav_SIX_HUNDRED); break; 
+        case 7: playTrack(wav_SEVEN_HUNDRED); break;
+        case 8: playTrack(wav_EIGHT_HUNDRED); break;
+        case 9: playTrack(wav_NINE_HUNDRED); break; 
+      }
       n %= 100;
-      if (n > 0) playTrack(wav_AND); 
+      delay(100);
+      // if (n > 0) playTrack(wav_AND); 
     }
     if (n>19) {
       int tens = n / 10;
@@ -265,8 +285,8 @@ void sayNumber(int n) {
         case 9: playTrack(wav_NINETY); break; 
       }
       n %= 10;
+      delay(100);
     }
-    delay(50);
     switch(n) {
       case 1: playTrack(wav_ONE); break; 
       case 2: playTrack(wav_TWO); break; 
@@ -288,6 +308,7 @@ void sayNumber(int n) {
       case 18: playTrack(wav_EIGHTEEN); break;
       case 19: playTrack(wav_NINETEEN); break; 
     }
+    delay(100);
   }
   return;
 }
@@ -325,13 +346,17 @@ void setTarget(char keyPressed) {
   int tempTarget = String(keyPressed).toInt(); // assign temporary target to the first digit that was pressed
   Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
   playTrack(wav_INPUT_TARGET);
-  
+
   // switch the display and voice to show the target being keyed in instead
   displayNumber(tempTarget);
   sayNumber(tempTarget);
 
   // loop and keep reading new input until new target is confirmed
   while (1) {
+    // ========= keep checking if readout button was pressed ========= 
+    readoutState = digitalRead(readoutPin);
+    if (readoutState == HIGH) readout(tempTarget, 'i');    
+
     keyPressed = keypad.getKey();
 
     if (keyPressed) {

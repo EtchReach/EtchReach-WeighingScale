@@ -11,9 +11,24 @@ grams
 # sayNumber() 
 negative
 zero
-thousand
-and
-hundred
+one thousand
+two thousand
+three thousand
+four thousand
+five thousand
+six thousand
+seven thousand
+eight thousand
+nine thousand
+one hundred
+two hundred
+three hundred
+four hundred
+five hundred
+six hundred
+seven hundred
+eight hundred
+nine hundred
 twenty
 thirty
 fourty
