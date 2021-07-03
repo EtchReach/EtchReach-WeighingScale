@@ -1,5 +1,7 @@
 # setup()
 weighing scale is turning on
+timeout
+turning off
 
 # tare()
 calibrating scale

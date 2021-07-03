@@ -10,13 +10,21 @@
 #include "TTS_AUDIO.h"
 
 
+// ========= Pololu Mini Pushbutton Power Switch =========
+// Used to turn on and off the weighing scale
+// integrate with a timer to have automatic shutdown after period of inactivity
+const int pololuPin = 11; // D11 pin
+unsigned long lastActive; // the number of milliseconds passed since turning on that the Arduino board was last active
+unsigned long timeout = 120000; // the number of milliseconds that has to pass since lastActive in order to timeout and shut down the device 
+
+
 // ========= DFPlayer mini mp3 module and speaker configurations =========
 // connect mp3 module's SPK1, SPK2 to TRS Breakout's TIP and SLEEVE. Order does not matter
 // connect mp3 module's VCC and GND to the arduino's VCC and GND
 #include "SoftwareSerial.h"
 #include "DFRobotDFPlayerMini.h"
-static const uint8_t mp3TxPin = 4; // D4 pin, connects to mp3 module's RX 
-static const uint8_t mp3RxPin = 5; // D5 pin, connects to mp3 module's TX 
+const int mp3TxPin = 4; // D4 pin, connects to mp3 module's RX 
+const int mp3RxPin = 5; // D5 pin, connects to mp3 module's TX 
 SoftwareSerial softwareSerial(mp3RxPin, mp3TxPin);
 DFRobotDFPlayerMini player; // Create the mp3 player object
 
@@ -33,8 +41,8 @@ char keys[ROWS][COLS] = {
 };
 // keypad facing upwards, wiring is A0 to A5, D6 from left to right of the keypad
 // keypad requires digital pin, but A6, A7 cannot be used as digital (strictly analog) 
-byte rowPins[ROWS] = {A0, A1, A2, A3}; // connect to the row pinouts of the keypad on A0-A3 pins
-byte colPins[COLS] = {A4, A5, 6}; // connect to the column pinouts of the keypad on A4-A5, D6 pins
+const byte rowPins[ROWS] = {A0, A1, A2, A3}; // connect to the row pinouts of the keypad on A0-A3 pins
+const byte colPins[COLS] = {A4, A5, 6}; // connect to the column pinouts of the keypad on A4-A5, D6 pins
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 char keyPressed; // tracking which key was pressed on the keypad
 
@@ -55,8 +63,7 @@ int readoutState; // tracking HIGH-LOW state of readoutPin
 
 
 // ========= Piezzobuzzer configurations =========
-// const int buzzPin = 7; // D7 pin (positive leg)
-const int buzzPin = 11; // D11 pin (positive leg)
+const int buzzPin = 7; // D7 pin (positive leg)
 
 
 // ========= HX711 Load Cell configurations =========
@@ -83,6 +90,11 @@ void setup() {
   // ========= Commmunication with computer ========= 
   Serial.begin(115200); // starts the serial communication
   Serial.println("Weighing scale starting up");
+
+
+  // ========= Pololu Mini Pushbutton Power Switch =========
+  pinMode(pololuPin, OUTPUT); // sets the pololuPin as an Output
+  lastActive = millis(); // updates the last active time of the Arduino board
 
 
   // ========= DFPlayer mini mp3 module and speaker init =========
@@ -129,25 +141,51 @@ void setup() {
 
 
 void loop() {
-  // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
+  // ========= keep checking latest reading and updating the tm1637 lcd panel =========
+  Serial.println("Last active: " + String(lastActive)); 
   currentReading = measure(); // take the current reading from the sensor
   displayNumber(currentReading); // show the reading on the display
   
-  // ========= keep checking if tare button was pressed ========= 
+
+    // ========= keep checking if tare button was pressed ========= 
   tareState = digitalRead(tarePin);
-  if (tareState == HIGH) tare();
+  if (tareState == HIGH) {
+    lastActive = millis();
+    tare();
+  }
 
   // ========= keep checking if readout button was pressed ========= 
   readoutState = digitalRead(readoutPin);
-  if (readoutState == HIGH) readout(currentReading, 'c');
+  if (readoutState == HIGH) {
+    lastActive = millis();    
+    readout(currentReading, 'c');
+  }
 
   // ========= keep checking if the keypad was pressed ========= 
   keyPressed = keypad.getKey();
-  if (keyPressed) target(keyPressed);
+  if (keyPressed) {
+    lastActive = millis();
+    target(keyPressed);
+  }
 
   // ========= keep checking if there is a need to sound the buzzer ========= 
   // currentTarget == -1 means that we have no currentTarget set hence no need to bother with the buzzer 
-  if (currentTarget != -1) buzz();
+  if (currentTarget != -1) {
+    // update lastActive inside buzz() on conditions that cause a buzz to occur
+    // long periods of no buzzing should not contribute and should not reset the timeout
+    buzz();
+  } 
+
+  // ========= keep checking if the time since last active has exceeded timeout setting =========
+  Serial.println("time passed: " + String(millis() - lastActive));
+  if (millis() - lastActive > timeout) {
+    Serial.println("Device timeout... shutting down...");
+    playTrack(wav_TIMEOUT);
+    delay(1000);
+    playTrack(wav_TURNING_OFF);
+    delay(1000);
+    digitalWrite(pololuPin, HIGH);   // Sets the pin to HIGH and shuts down the Arduino
+  }
 }
 
 
@@ -411,11 +449,11 @@ void setTarget(char keyPressed) {
 // ========= buzz function ========= 
 // controls the buzzing tones for target indications (close, overshot, hit)
 // 1 - normal. 2 - close (approaching targetWeight). 3 - overshot (went over targetWeight). 4 - hit (on targetWeight).
+// timeout is updated only in sutations that buzz
 void buzz() {
   // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
   currentReading = measure(); // take the current reading from the sensor
   displayNumber(currentReading); // show the reading on the display
-
 
   float difference = currentTarget - currentReading;
 
@@ -425,29 +463,39 @@ void buzz() {
   } 
   // approaching mode, fast beep
   else if (difference >= 15 and difference < 50) {
+    lastActive = millis();
+
     Serial.println("\nbuzz() - approaching target\n");
-    tone(buzzPin, 311); // D#
+    tone(buzzPin, 311);
     delay(200);
     noTone(buzzPin);
-    delay(800);
+    delay(500);
   } 
   // hit mode, target reading reached, flatline
   else if (difference >= -15 and difference < 15) {
+    lastActive = millis();
+
     Serial.println("\nbuzz() - reached target\n");
     playTrack(wav_TARGET_REACHED);
-    tone(buzzPin, 440); // A
+    tone(buzzPin, 440);
     delay(1000);
     noTone(buzzPin);
     delay(250);
   } 
   // overshot mode, offbeat
   else if (difference < -15) {
+    lastActive = millis();
+
     Serial.println("\nbuzz() - overshot target\n");
     playTrack(wav_OVERSHOT_TARGET);
-    tone(buzzPin, 440); // F#
+    tone(buzzPin, 440);
     delay(50);
-    tone(buzzPin, 350); // F#
+    tone(buzzPin, 350);
     delay(50);
+    tone(buzzPin, 440);
+    delay(50);
+    tone(buzzPin, 350);
+    delay(50);    
     noTone(buzzPin);
     delay(200);
   }
