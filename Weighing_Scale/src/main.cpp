@@ -23,8 +23,8 @@ unsigned long timeout = 120000; // the number of milliseconds that has to pass s
 // connect mp3 module's VCC and GND to the arduino's VCC and GND
 #include "SoftwareSerial.h"
 #include "DFRobotDFPlayerMini.h"
-const int mp3TxPin = 4; // D4 pin, connects to mp3 module's RX 
-const int mp3RxPin = 5; // D5 pin, connects to mp3 module's TX 
+const int mp3TxPin = 5; // D5 pin, connects to mp3 module's TX 
+const int mp3RxPin = 4; // D4 pin, connects to mp3 module's RX 
 SoftwareSerial softwareSerial(mp3RxPin, mp3TxPin);
 DFRobotDFPlayerMini player; // Create the mp3 player object
 
@@ -41,8 +41,12 @@ char keys[ROWS][COLS] = {
 };
 // keypad facing upwards, wiring is A0 to A5, D6 from left to right of the keypad
 // keypad requires digital pin, but A6, A7 cannot be used as digital (strictly analog) 
+// const byte rowPins[ROWS] = {A0, A1, A2, A3}; // connect to the row pinouts of the keypad on A0-A3 pins
+// const byte colPins[COLS] = {A4, A5, 6}; // connect to the column pinouts of the keypad on A4-A5, D6 pins
+
 const byte rowPins[ROWS] = {A0, A1, A2, A3}; // connect to the row pinouts of the keypad on A0-A3 pins
 const byte colPins[COLS] = {A4, A5, 6}; // connect to the column pinouts of the keypad on A4-A5, D6 pins
+
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 char keyPressed; // tracking which key was pressed on the keypad
 
