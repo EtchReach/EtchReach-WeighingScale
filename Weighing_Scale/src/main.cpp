@@ -105,7 +105,7 @@ void setup() {
   softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
-    player.volume(20); // set volume (0 to 30).
+    player.volume(30); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
@@ -130,7 +130,7 @@ void setup() {
 
   // ========= HX711 Load Cell init =========
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(52600); // this value is obtained by calibrating the scale with known weights; see the README for details
+  scale.set_scale(42900); // this value is obtained by calibrating the scale with known weights; see the README for details
 
 
   // ========= variables and constants init =========
