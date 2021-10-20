@@ -13,9 +13,17 @@
 // ========= Pololu Mini Pushbutton Power Switch =========
 // Used to turn on and off the weighing scale
 // integrate with a timer to have automatic shutdown after period of inactivity
-const int pololuPin = 11; // D11 pin
+
+// orientation of pololu: push button at the top
+// battery +ve, connects to pololu's right GND
+// battery -ve, connects to pololu's right VIN
+// arduino 5V, connects to pololu's left VOUT
+// arduino GND, connects to pololu's left GND
+// button leg, connects to pololu's A
+// diagonally opposite button leg, connects to pololu's B
+const int pololuPin = 11; // D11 pin, connects to pololu's OFF
 unsigned long lastActive; // the number of milliseconds passed since turning on that the Arduino board was last active
-unsigned long timeout = 120000; // the number of milliseconds that has to pass since lastActive in order to timeout and shut down the device 
+unsigned long timeout = 1000*60*15; // the number of milliseconds that has to pass since lastActive in order to timeout and shut down the device 
 
 
 // ========= DFPlayer mini mp3 module and speaker configurations =========
@@ -60,10 +68,10 @@ TM1637Display display(CLK, DIO);
 
 
 // ========= I/O button configurations =========
-const int tarePin = 3; // D2 pin, tare button
-const int readoutPin = 2; // D3 pin, readout button
+const int tarePin = 3; // D3 pin, tare button
+const int speakPin = 2; // D2 pin, speak button
 int tareState; // tracking HIGH-LOW state of tarePin
-int readoutState; // tracking HIGH-LOW state of readoutPin
+int speakState; // tracking HIGH-LOW state of speakPin
 
 
 // ========= Piezzobuzzer configurations =========
@@ -79,10 +87,9 @@ HX711 scale; // create the scale object
 
 // ========= variables and constants configurations =========
 float currentTarget; // the target has to be keyed in through the keypad, if -1 it means no target and we will not be providing help with buzzer sounds
-float currentReading; // the currently measured weight 
-
-
-
+float currentReading; // the currently measured weight
+unsigned long currentReadingValidAs; // the last timing the currentReading was unchanged
+float lastReadingReadout; // the last reading that was read out based on a timer
 
 
 /* =============================================
@@ -105,7 +112,7 @@ void setup() {
   softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
-    player.volume(30); // set volume (0 to 30).
+    player.volume(20); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
@@ -121,7 +128,7 @@ void setup() {
 
   // ========= I/O button init =========
   pinMode(tarePin, INPUT); // sets the tarePin as an Input (tare button)
-  pinMode(readoutPin, INPUT); // sets the readoutPin as an Input (readout button)
+  pinMode(speakPin, INPUT); // sets the speakPin as an Input (speak button)
 
 
   // ========= Piezzobuzzer init =========
@@ -135,8 +142,9 @@ void setup() {
 
   // ========= variables and constants init =========
   currentTarget = -1; // no target 
-  currentReading = 0; // no reading 
-
+  currentReading = 0; // no reading
+  currentReadingValidAs = millis();
+  lastReadingReadout = 0; // no reading already read out
 
   // ========= program init =========
   playTrack(wav_WEIGHING_SCALE_IS_TURNING_ON);
@@ -147,22 +155,24 @@ void setup() {
 void loop() {
   // ========= keep checking latest reading and updating the tm1637 lcd panel =========
   Serial.println("Last active: " + String(lastActive)); 
-  currentReading = measure(); // take the current reading from the sensor
-  displayNumber(currentReading); // show the reading on the display
+  measure(); // update the current reading from the sensor
   
+  displayNumber(currentReading); // show the reading on the display
 
-    // ========= keep checking if tare button was pressed ========= 
+  autoReadout(); // if the currentReading has not changed for one second, read it out. only reads it out ONCE
+
+  // ========= keep checking if tare button was pressed ========= 
   tareState = digitalRead(tarePin);
   if (tareState == HIGH) {
     lastActive = millis();
     tare();
   }
 
-  // ========= keep checking if readout button was pressed ========= 
-  readoutState = digitalRead(readoutPin);
-  if (readoutState == HIGH) {
+  // ========= keep checking if speak button was pressed ========= 
+  speakState = digitalRead(speakPin);
+  if (speakState == HIGH) {
     lastActive = millis();    
-    readout(currentReading, 'c');
+    speak(currentReading, 'c');
   }
 
   // ========= keep checking if the keypad was pressed ========= 
@@ -205,40 +215,70 @@ void loop() {
 // uses the DFPlayer mini to play a track
 void playTrack(int trackToPlay) {
   Serial.println("\nplayTrack() - track to play: " + String(trackToPlay));
-  delay(50);
 
   // if player.readState() == 513 then player is playing. if player.readState() == 512 then player has stopped
-  while (player.readState() == 513) {
-    Serial.println("playTrack() - player busy"); 
-    delay(200);
+  while (player.readState() != 512 or player.read() != 512) {
+    // Serial.println("playTrack() - player busy"); 
+    // Serial.println(player.read());
+    // Serial.println(player.readState());
   }
 
   Serial.println("playTrack() - playing now: " + String(trackToPlay)); 
   player.stop();
+
   player.play(trackToPlay);
 
-  while (player.readState() == 513) {
-    Serial.println("playTrack() - player busy");
-    delay(200);
+
+  while (player.readState() != 512 or player.read() != 512) {
+    // Serial.println("playTrack() - player busy");
+    // Serial.println(player.read());    
+    // Serial.println(player.readState());
   }  
 
   Serial.print("\nplayTrack() - finished playing\n");
 
-  delay(50);
 }
 
   
 // ======== measure function =========
 // uses the load cell to take a measurement
 int measure(){
-  int Reading = int(scale.get_units(10)*100);
-  Serial.println("measure() - currentReading: " + String(currentReading));
-  return Reading;
+  int newReading = int(scale.get_units(10)*100);
+
+  Serial.println("measure() - newReading: " + String(newReading));
+
+  if (currentReading != newReading) {
+    currentReading = newReading;
+    currentReadingValidAs = millis();
+  }
+}
+
+
+// ======== autoReadout function =========
+// reads out the reading automatically after one second of delay, if the reading wwas never read before
+void autoReadout() {
+  Serial.println("currentReading: ");
+  Serial.println(currentReading);
+  Serial.println("lastReadingReadout: ");
+  Serial.println(lastReadingReadout);
+  Serial.println("currentReadingValidAs: ");
+  Serial.println(currentReadingValidAs);
+
+  if (currentReading != lastReadingReadout) {
+    Serial.println("not equal");
+    if (millis() - currentReadingValidAs > 1000) {
+
+      lastReadingReadout = currentReading;
+
+      sayNumber(currentReading);
+      playTrack(wav_GRAMS);
+    }
+  }
 }
 
 
 // ======== display function =========
-// shows the current reading on the 
+// shows the current reading on the screen
 void displayNumber(int n) {
   uint8_t data[] = { 0x0, 0x0, 0x0, 0x0 };
   display.setSegments(data);
@@ -249,22 +289,22 @@ void displayNumber(int n) {
 // ======== tare function =========
 void tare() {
   Serial.println("\ntare() - start taring");
-  playTrack(wav_CALIBRATING_SCALE); 
+  playTrack(wav_ZEROING_SCALE); 
   scale.tare(); // taring
-  playTrack(wav_READY); 
+  playTrack(wav_READY_TO_USE); 
   Serial.println("tare() - finish taring\n");
 }
 
 
-// ========= readout function ========= 
-// will say the current value that is passed to it when the readout button is pressed
+// ========= speak function ========= 
+// will say the current value that is passed to it when the speak button is pressed
 // could be either the actual reading or a pending input, indicated by char c (this is not really necessary, just for a print statement switch)
-void readout(int n, char c) {  
+void speak(int n, char c) {  
   // want to read out the current reading
   if (c == 'r') {
-    Serial.println("\nreadout() - current reading: " + String(n) + "\n");
+    Serial.println("\nspeak() - current reading: " + String(n) + "\n");
   } else if (c =='i') {
-    Serial.println("\nreadout() - current target being typed: " + String(n) + "\n");
+    Serial.println("\nspeak() - current target being typed: " + String(n) + "\n");
   }
   sayNumber((int)n);
   playTrack(wav_GRAMS);    
@@ -294,8 +334,6 @@ void sayNumber(int n) {
         case 9: playTrack(wav_NINE_THOUSAND); break; 
       }
       n %= 1000;
-      delay(100);
-      // if ((n > 0) && (n<100)) playTrack(wav_AND); 
     }
     if (n>=100) {
       int hundreds = n / 100;
@@ -311,8 +349,6 @@ void sayNumber(int n) {
         case 9: playTrack(wav_NINE_HUNDRED); break; 
       }
       n %= 100;
-      delay(100);
-      // if (n > 0) playTrack(wav_AND); 
     }
     if (n>19) {
       int tens = n / 10;
@@ -327,7 +363,6 @@ void sayNumber(int n) {
         case 9: playTrack(wav_NINETY); break; 
       }
       n %= 10;
-      delay(100);
     }
     switch(n) {
       case 1: playTrack(wav_ONE); break; 
@@ -350,9 +385,7 @@ void sayNumber(int n) {
       case 18: playTrack(wav_EIGHTEEN); break;
       case 19: playTrack(wav_NINETEEN); break; 
     }
-    delay(100);
   }
-  return;
 }
 
 
@@ -377,6 +410,7 @@ void target(char keyPressed) {
     // digit key will start the target setting process
     Serial.println("\ntarget() - digit pressed, now setting a target\n");
     playTrack(wav_SETTING_TARGET);
+    delay(1000);
     setTarget(keyPressed);
   }  
 }
@@ -387,7 +421,7 @@ void target(char keyPressed) {
 void setTarget(char keyPressed) {
   int tempTarget = String(keyPressed).toInt(); // assign temporary target to the first digit that was pressed
   Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
-  playTrack(wav_INPUT_TARGET);
+  
 
   // switch the display and voice to show the target being keyed in instead
   displayNumber(tempTarget);
@@ -395,9 +429,9 @@ void setTarget(char keyPressed) {
 
   // loop and keep reading new input until new target is confirmed
   while (1) {
-    // ========= keep checking if readout button was pressed ========= 
-    readoutState = digitalRead(readoutPin);
-    if (readoutState == HIGH) readout(tempTarget, 'i');    
+    // ========= keep checking if speak button was pressed ========= 
+    speakState = digitalRead(speakPin);
+    if (speakState == HIGH) speak(tempTarget, 'i');    
 
     keyPressed = keypad.getKey();
 
@@ -422,7 +456,6 @@ void setTarget(char keyPressed) {
           break;
         } else {
           Serial.println("setTarget() - backspace, new tempTarget: " + String(tempTarget));
-          playTrack(wav_INPUT_TARGET);
 
           // switch the display show the target currently being keyed in
           displayNumber(tempTarget);              
@@ -435,14 +468,14 @@ void setTarget(char keyPressed) {
         if (tempTarget < 1000) {
           tempTarget = tempTarget * 10 + String(keyPressed).toInt();
           Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
-          playTrack(wav_INPUT_TARGET);
 
           // switch the display show the target currently being keyed in
           displayNumber(tempTarget);              
-          sayNumber(tempTarget);
+          // sayNumber(tempTarget);
+          sayNumber(String(keyPressed).toInt());
         } else {
           Serial.println("\nsetTarget() - exceeded maximum target allowable: only up to 4 digits\n");
-          playTrack(wav_EXCEEDED_MAXIMUM_ALLOWABLE_INPUT);
+          playTrack(wav_INPUT_TOO_BIG);
         }
       }
     }
@@ -456,41 +489,55 @@ void setTarget(char keyPressed) {
 // timeout is updated only in sutations that buzz
 void buzz() {
   // ========= keep checking latest reading and updating the tm1637 lcd panel ========= 
-  currentReading = measure(); // take the current reading from the sensor
+  measure(); // update the current reading from the sensor
   displayNumber(currentReading); // show the reading on the display
 
-  float difference = currentTarget - currentReading;
+  float difference = currentTarget - currentReading; // how far away we are from currentTarget
+  float approaching = min(currentTarget * 0.15, 50); // to have a lower limit for how far "approaching" will be
 
-  // normal mode, no sound
-  if (difference >= 50) {
-    // pass  
-  } 
-  // approaching mode, fast beep
-  else if (difference >= 15 and difference < 50) {
-    lastActive = millis();
+  // very low currentTarget at < 10, we will set hard numerical limits and have no approaching sounds since too small to approach meaningfully
+  if (currentTarget < 10) {
+    if (difference < -1) {
+      lastActive = millis();
+      buzzOvershot();
+    }
+    else if (difference >= -1 and difference < 1 ) {
+      lastActive = millis();
+      buzzHit();
+    } 
+    else {
+      // pass
+    }
+  }
 
-    Serial.println("\nbuzz() - approaching target\n");
-    tone(buzzPin, 311);
-    delay(200);
-    noTone(buzzPin);
-    delay(500);
-  } 
-  // hit mode, target reading reached, flatline
-  else if (difference >= -15 and difference < 15) {
-    lastActive = millis();
+  // currentTarget sufficiently big to implement either percentage based limits or hard numerical limits
+  else {
+    if (difference < -3) {
+      lastActive = millis();
+      buzzOvershot();      
+    }
+    else if (difference >= -3 and difference < 1) {
+      lastActive = millis();
+      buzzHit();      
+    }
+    else if (difference >= 1 and difference < approaching) {
+      lastActive = millis();
+      buzzApproaching();
 
-    Serial.println("\nbuzz() - reached target\n");
-    playTrack(wav_TARGET_REACHED);
-    tone(buzzPin, 440);
-    delay(1000);
-    noTone(buzzPin);
-    delay(250);
-  } 
-  // overshot mode, offbeat
-  else if (difference < -15) {
-    lastActive = millis();
+      sayNumber(difference);
+      playTrack(wav_GRAMS_MORE);
+    }
+    else {
+      // pass
+    }
+  }
+}
 
+
+
+void buzzOvershot() {
     Serial.println("\nbuzz() - overshot target\n");
+
     playTrack(wav_OVERSHOT_TARGET);
     tone(buzzPin, 440);
     delay(50);
@@ -502,5 +549,27 @@ void buzz() {
     delay(50);    
     noTone(buzzPin);
     delay(200);
-  }
+}
+
+
+// hit mode, target reading reached, flatline
+void buzzHit() {
+    Serial.println("\nbuzz() - reached target\n");
+
+    playTrack(wav_TARGET_REACHED);
+    tone(buzzPin, 440);
+    delay(1000);
+    noTone(buzzPin);
+    delay(250);
+}
+
+
+// approaching mode, fast beep
+void buzzApproaching() {
+    Serial.println("\nbuzz() - approaching target\n");
+
+    tone(buzzPin, 311);
+    delay(200);
+    noTone(buzzPin);
+    delay(200);
 }

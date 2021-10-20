@@ -4,8 +4,8 @@ timeout
 turning off
 
 # tare()
-calibrating scale
-ready
+zeroing scale
+ready to use
 
 # readout()
 grams
@@ -66,12 +66,12 @@ current target removed
 setting target
 
 # setTarget()
-input target
 new target confirmed
 cancelling input
 target unchanged
-exceeded maximum allowable input
+input too big
 
 # buzz()
 target reached
 overshot target
+grams more
