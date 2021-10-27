@@ -173,7 +173,8 @@ def tts_audio_generation(args):
                 file.write(f"extern const int wav_{source_vocab_item} = {next_target_file_number};\n")
                 file.close()
             
-            # require at least 1 second difference between file creation time, use 2.1 seconds to be safe
+            # # require at least 1 second difference between file creation time, use 1.1 seconds to be safe
+            # # this may not be necessary 
             # if sd_card:
             #     time.sleep(1.1)
 

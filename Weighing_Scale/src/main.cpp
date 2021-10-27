@@ -112,7 +112,7 @@ void setup() {
   softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
-    player.volume(20); // set volume (0 to 30).
+    player.volume(30); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
