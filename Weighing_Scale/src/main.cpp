@@ -148,7 +148,7 @@ void setup() {
 
   // ========= program init =========
   playTrack(wav_WEIGHING_SCALE_IS_TURNING_ON);
-  tare(); // reset the scale to 0  
+  tare(); // reset the scale to 0
 }
 
 
@@ -525,7 +525,7 @@ void buzz() {
       buzzApproaching();
 
       sayNumber(difference);
-      playTrack(wav_GRAMS_MORE);
+      playTrack(wav_MORE_GRAMS);
     }
     else {
       // pass

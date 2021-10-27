@@ -174,8 +174,8 @@ def tts_audio_generation(args):
                 file.close()
             
             # require at least 1 second difference between file creation time, use 2.1 seconds to be safe
-            if sd_card:
-                time.sleep(1.1)
+            # if sd_card:
+            #     time.sleep(1.1)
 
             # counter 
             added += 1
