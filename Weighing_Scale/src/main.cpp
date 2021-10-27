@@ -113,7 +113,7 @@ void setup() {
   softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
-    player.volume(20); // set volume (0 to 30).
+    player.volume(30); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
@@ -405,14 +405,13 @@ void setTarget(char keyPressed) {
     
       // digits will add into our input
       else {
-        if (tempTarget < (int)(WEIGHTLIMIT/10)) {
+        if (tempTarget <= (int)(WEIGHTLIMIT/10)) {
           tempTarget = tempTarget * 10 + String(keyPressed).toInt();
 
           // trying to key in a target exceeds the weight limit
           if (tempTarget > WEIGHTLIMIT) {
             playTrack(wav_EXCEEDED_MAXIMUM_TARGET);
             sayNumber(WEIGHTLIMIT);
-            playTrack(wav_GRAMS);
 
             // reset tempTarget to last known
             tempTarget = (tempTarget - String(keyPressed).toInt()) / 10;
@@ -425,10 +424,9 @@ void setTarget(char keyPressed) {
             sayNumber(String(keyPressed).toInt());
           }
         } else {
-          Serial.println("\nsetTarget() - exceeded maximum target allowable: only up to 4 digits\n");
+          Serial.println("\nsetTarget() - exceeded maximum target allowable\n");
           playTrack(wav_EXCEEDED_MAXIMUM_TARGET);
           sayNumber(WEIGHTLIMIT);
-          playTrack(wav_GRAMS);
         }
       }
     }
