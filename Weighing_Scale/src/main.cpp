@@ -405,7 +405,7 @@ void setTarget(char keyPressed) {
     
       // digits will add into our input
       else {
-        if (tempTarget < 1000) {
+        if (tempTarget < (int)(WEIGHTLIMIT/10)) {
           tempTarget = tempTarget * 10 + String(keyPressed).toInt();
 
           // trying to key in a target exceeds the weight limit
