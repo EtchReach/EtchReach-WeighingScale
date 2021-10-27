@@ -83,6 +83,7 @@ const int buzzPin = 7; // D7 pin (positive leg)
 const int LOADCELL_DOUT_PIN = 10; // D10 pin
 const int LOADCELL_SCK_PIN = 12; // D12 pin
 HX711 scale; // create the scale object
+float WEIGHTLIMIT = 5100; // the maximum weight that can be measured, or keyed in as an input (in grams). the load cell we have is for 5kg
 
 
 // ========= variables and constants configurations =========
@@ -112,7 +113,7 @@ void setup() {
   softwareSerial.begin(9600); // initialize serial port for DFPlayer Mini
   if (player.begin(softwareSerial)) {
     Serial.println("DFPlayer OK"); // start communication with DFPlayer Mini
-    player.volume(30); // set volume (0 to 30).
+    player.volume(20); // set volume (0 to 30).
     player.EQ(0); // equalize volume
   } else {
     Serial.println("Connecting to DFPlayer Mini failed!");
@@ -225,7 +226,6 @@ void playTrack(int trackToPlay) {
 
   Serial.println("playTrack() - playing now: " + String(trackToPlay)); 
   player.stop();
-
   player.play(trackToPlay);
 
 
@@ -250,6 +250,12 @@ int measure(){
   if (currentReading != newReading) {
     currentReading = newReading;
     currentReadingValidAs = millis();
+  }
+
+  if (currentReading > WEIGHTLIMIT) {
+    playTrack(wav_EXCEEDED_MAXIMUM_WEIGHT_LIMIT);
+    sayNumber(WEIGHTLIMIT);
+    playTrack(wav_GRAMS);
   }
 }
 
@@ -312,79 +318,13 @@ void speak(int n, char c) {
 
 
 // ========= sayNumber function ========= 
-// Say any number between -999,999 and 999,999 
+// Able to say any number between -999,999 and 999,999 
 void sayNumber(int n) {
   if (n<0) {
     playTrack(wav_NEGATIVE); 
     sayNumber(-n);
-  } else if (n==0) {
-    playTrack(wav_ZERO); 
   } else {
-    if (n>=1000) {
-      int thousands = n / 1000;
-      switch(thousands) {
-        case 1: playTrack(wav_ONE_THOUSAND); break; 
-        case 2: playTrack(wav_TWO_THOUSAND); break; 
-        case 3: playTrack(wav_THREE_THOUSAND); break;
-        case 4: playTrack(wav_FOUR_THOUSAND); break; 
-        case 5: playTrack(wav_FIVE_THOUSAND); break; 
-        case 6: playTrack(wav_SIX_THOUSAND); break; 
-        case 7: playTrack(wav_SEVEN_THOUSAND); break;
-        case 8: playTrack(wav_EIGHT_THOUSAND); break;
-        case 9: playTrack(wav_NINE_THOUSAND); break; 
-      }
-      n %= 1000;
-    }
-    if (n>=100) {
-      int hundreds = n / 100;
-      switch(hundreds) {
-        case 1: playTrack(wav_ONE_HUNDRED); break; 
-        case 2: playTrack(wav_TWO_HUNDRED); break; 
-        case 3: playTrack(wav_THREE_HUNDRED); break;
-        case 4: playTrack(wav_FOUR_HUNDRED); break; 
-        case 5: playTrack(wav_FIVE_HUNDRED); break; 
-        case 6: playTrack(wav_SIX_HUNDRED); break; 
-        case 7: playTrack(wav_SEVEN_HUNDRED); break;
-        case 8: playTrack(wav_EIGHT_HUNDRED); break;
-        case 9: playTrack(wav_NINE_HUNDRED); break; 
-      }
-      n %= 100;
-    }
-    if (n>19) {
-      int tens = n / 10;
-      switch (tens) {
-        case 2: playTrack(wav_TWENTY); break; 
-        case 3: playTrack(wav_THIRTY); break; 
-        case 4: playTrack(wav_FOURTY); break; 
-        case 5: playTrack(wav_FIFTY); break; 
-        case 6: playTrack(wav_SIXTY); break; 
-        case 7: playTrack(wav_SEVENTY); break; 
-        case 8: playTrack(wav_EIGHTY); break; 
-        case 9: playTrack(wav_NINETY); break; 
-      }
-      n %= 10;
-    }
-    switch(n) {
-      case 1: playTrack(wav_ONE); break; 
-      case 2: playTrack(wav_TWO); break; 
-      case 3: playTrack(wav_THREE); break;
-      case 4: playTrack(wav_FOUR); break; 
-      case 5: playTrack(wav_FIVE); break; 
-      case 6: playTrack(wav_SIX); break; 
-      case 7: playTrack(wav_SEVEN); break;
-      case 8: playTrack(wav_EIGHT); break;
-      case 9: playTrack(wav_NINE); break; 
-      case 10: playTrack(wav_TEN); break; 
-      case 11: playTrack(wav_ELEVEN); break; 
-      case 12: playTrack(wav_TWELVE); break; 
-      case 13: playTrack(wav_THIRTEEN); break; 
-      case 14: playTrack(wav_FOURTEEN); break; 
-      case 15: playTrack(wav_FIFTEEN); break; 
-      case 16: playTrack(wav_SIXTEEN); break; 
-      case 17: playTrack(wav_SEVENTEEN); break;
-      case 18: playTrack(wav_EIGHTEEN); break;
-      case 19: playTrack(wav_NINETEEN); break; 
-    }
+    playTrack(wav_0 + n);
   }
 }
 
@@ -467,15 +407,28 @@ void setTarget(char keyPressed) {
       else {
         if (tempTarget < 1000) {
           tempTarget = tempTarget * 10 + String(keyPressed).toInt();
-          Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
 
-          // switch the display show the target currently being keyed in
-          displayNumber(tempTarget);              
-          // sayNumber(tempTarget);
-          sayNumber(String(keyPressed).toInt());
+          // trying to key in a target exceeds the weight limit
+          if (tempTarget > WEIGHTLIMIT) {
+            playTrack(wav_EXCEEDED_MAXIMUM_TARGET);
+            sayNumber(WEIGHTLIMIT);
+            playTrack(wav_GRAMS);
+
+            // reset tempTarget to last known
+            tempTarget = (tempTarget - String(keyPressed).toInt()) / 10;
+          } else {
+            Serial.println("setTarget() - new digit, new tempTarget: " + String(tempTarget));
+
+            // switch the display show the target currently being keyed in
+            displayNumber(tempTarget);              
+            // sayNumber(tempTarget);
+            sayNumber(String(keyPressed).toInt());
+          }
         } else {
           Serial.println("\nsetTarget() - exceeded maximum target allowable: only up to 4 digits\n");
-          playTrack(wav_INPUT_TOO_BIG);
+          playTrack(wav_EXCEEDED_MAXIMUM_TARGET);
+          sayNumber(WEIGHTLIMIT);
+          playTrack(wav_GRAMS);
         }
       }
     }

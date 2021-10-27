@@ -12,52 +12,9 @@ grams
 
 # sayNumber() 
 negative
-zero
-one thousand
-two thousand
-three thousand
-four thousand
-five thousand
-six thousand
-seven thousand
-eight thousand
-nine thousand
-one hundred
-two hundred
-three hundred
-four hundred
-five hundred
-six hundred
-seven hundred
-eight hundred
-nine hundred
-twenty
-thirty
-fourty
-fifty
-sixty
-seventy
-eighty
-ninety
-one
-two
-three
-four
-five
-six
-seven
-eight
-nine
-ten
-eleven
-twelve
-thirteen
-fourteen
-fifteen
-sixteen
-seventeen
-eighteen
-nineteen
+
+# measure()
+exceeded maximum weight limit
 
 # target()
 no target has been set
@@ -69,7 +26,8 @@ setting target
 new target confirmed
 cancelling input
 target unchanged
-input too big
+exceeded maximum target
+
 
 # buzz()
 target reached

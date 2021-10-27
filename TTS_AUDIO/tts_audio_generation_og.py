@@ -121,11 +121,6 @@ def tts_audio_generation(args):
     vocabulary = [vocabulary_item for vocabulary_item in vocabulary if vocabulary_item != '']
     vocabulary = [vocabulary_item for vocabulary_item in vocabulary if vocabulary_item[0] != '#']
 
-    # based on the weight limit of the load cell, it can only take up to 5kg = 5000g
-    # we will load in additional numbers, up to 9000 just for simplicity 
-    for i in range(0, 9001):
-        vocabulary.append(str(i))
-
     # create a uppercase version, with spaces replaced by underscores 
     source_vocab = [vocabulary_item.upper().replace(" ", "_") for vocabulary_item in vocabulary]
 
