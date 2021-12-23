@@ -277,6 +277,7 @@ void autoReadout() {
       lastReadingReadout = currentReading;
 
       sayNumber(currentReading);
+      delay(1000);
       playTrack(wav_GRAMS);
     }
   }
