@@ -138,7 +138,7 @@ void setup() {
 
   // ========= HX711 Load Cell init =========
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(42900); // this value is obtained by calibrating the scale with known weights; see the README for details
+  scale.set_scale(38950); // this value is obtained by calibrating the scale with known weights; see the README for details
 
 
   // ========= variables and constants init =========
